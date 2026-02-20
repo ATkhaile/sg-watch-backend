@@ -24,6 +24,7 @@ yarn-error.log
 /firebase
 /apple
 .claude
+storage/
 
 # Claude Code temporary files
 tmpclaude-*

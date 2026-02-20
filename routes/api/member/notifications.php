@@ -28,11 +28,11 @@ Route::prefix('notification_pushs')->group(function () {
     Route::get('{notification_push_id}/history', \App\Http\Actions\Api\NotificationPush\GetNotificationPushHistoryAction::class);
 });
 
-Route::prefix('pusher/notifications')->group(function () {
-    Route::get('', \App\Http\Actions\Api\PusherNotification\GetPusherNotificationsAction::class);
-    Route::get('unread', \App\Http\Actions\Api\PusherNotification\GetPusherUnreadNotificationsAction::class);
-    Route::put('{id}/readed', \App\Http\Actions\Api\PusherNotification\UpdatePusherNotificationReadedAction::class);
-});
+// Route::prefix('pusher/notifications')->group(function () {
+//     Route::get('', \App\Http\Actions\Api\PusherNotification\GetPusherNotificationsAction::class);
+//     Route::get('unread', \App\Http\Actions\Api\PusherNotification\GetPusherUnreadNotificationsAction::class);
+//     Route::put('{id}/readed', \App\Http\Actions\Api\PusherNotification\UpdatePusherNotificationReadedAction::class);
+// });
 
 Route::prefix('firebase/notifications')->group(function () {
     Route::get('', \App\Http\Actions\Api\Firebase\GetFirebaseNotificationsAction::class);
