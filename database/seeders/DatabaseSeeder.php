@@ -25,5 +25,8 @@ class DatabaseSeeder extends Seeder
 
         // 5. メンバーシップアクション設定の初期データを作成 (決済用)
         $this->call(\Database\Seeders\ElcCore\MembershipActionSettingsSeeder::class);
+
+        // 6. Shop: brands, categories, products mẫu
+        $this->call(\Database\Seeders\Shop\ShopSeeder::class);
     }
 }
