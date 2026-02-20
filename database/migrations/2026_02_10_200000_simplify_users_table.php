@@ -10,8 +10,8 @@ return new class extends Migration {
     {
         // Step 1: Add new columns
         Schema::table('users', function (Blueprint $table) {
-            $table->string('first_name')->nullable()->after('name');
-            $table->string('last_name')->nullable()->after('first_name');
+            // $table->string('first_name')->nullable()->after('name');
+            // $table->string('last_name')->nullable()->after('first_name');
             $table->string('avatar_url')->nullable()->after('last_name');
         });
 
@@ -53,7 +53,26 @@ return new class extends Migration {
             END
         ");
 
-        // Step 7: Drop all unused columns
+        // Step 7: Drop foreign key constraints trước khi drop columns
+        Schema::table('users', function (Blueprint $table) {
+            $foreignKeys = [
+                'affiliate_id'  => 'users_affiliate_id_foreign',
+                'plan_id'       => 'users_plan_id_foreign',
+                'prefecture_id' => 'users_prefecture_id_foreign',
+            ];
+
+            foreach ($foreignKeys as $column => $constraintName) {
+                if (Schema::hasColumn('users', $column)) {
+                    try {
+                        $table->dropForeign($constraintName);
+                    } catch (\Exception $e) {
+                        // Constraint may not exist, skip
+                    }
+                }
+            }
+        });
+
+        // Step 8: Drop all unused columns
         Schema::table('users', function (Blueprint $table) {
             $columnsToDrop = [];
 
@@ -91,7 +110,7 @@ return new class extends Migration {
             }
         });
 
-        // Step 8: Rename gender_new → gender
+        // Step 9: Rename gender_new → gender
         DB::statement("ALTER TABLE users CHANGE COLUMN gender_new gender ENUM('male', 'female', 'other', 'unknown') DEFAULT 'unknown'");
     }
 
