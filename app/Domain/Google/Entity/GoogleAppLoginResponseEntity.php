@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Domain\Google\Entity;
+
+
+readonly class GoogleAppLoginResponseEntity
+{
+    public function __construct(
+        public ?string $token = null,
+        public int $statusCode = 200,
+        public string $message = '',
+    ) {
+    }
+}
