@@ -1,0 +1,68 @@
+@php
+$serviceName = env('MEMBER_SERVICE_NAME', 'Booking Service');
+$serviceUrl = env('MEMBER_SERVICE_URL', '');
+$serviceCompany = env('MEMBER_SERVICE_COMPANY', '');
+$serviceAddress = env('MEMBER_SERVICE_ADDRESS', '');
+@endphp
+※このメールはシステムからの自動返信です
+<br>
+<br>
+{{$data['last_name_kanji']}}{{$data['first_name_kanji']}}様<br>
+<br>
+いつも「{{ $serviceName }}」をご利用いただきまして<br>
+誠にありがとうございます。<br>
+<br>
+以下のご予約のキャンセルを受け付けました。<br>
+このキャンセルメール受領後の変更は承ることができませんのでご了承ください。<br>
+※本メールは配信専用のため、ご返信いただきましても各店舗へは届きません。<br>
+<br>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br>
+■キャンセル内容：ご利用店舗 Golph.club Suminoe<br>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br>
+予約番号：{{ $data['reservation_number'] }}<br>
+予約日時：{{ $data['date'] }}<br>
+<br>
+■利用時間：{{ $data['usage_time_start'] }}-{{ $data['usage_time_end'] }}<br>
+■利用人数：{{ $data['option1_name'] }}<br>
+■時間延長：{{ $data['option2_name'] ?? 'なし' }}<br>
+■インストラクター：{{ $data['instructor_flag'] ? 'あり' : 'なし' }}<br>
+■ゴルフ整体：{{ $data['lesson_flag'] ? 'あり' : 'なし' }}<br>
+■駐車場のご利用：{{ $data['parking_flag'] ? 'あり' : 'なし' }}<br>
+■クーポンのご利用：{{ $data['coupon_name'] }}<br>
+<br>
+■お支払い方法：クレジットカード<br>
+■お支払い金額：¥{{ $data['total_amount'] }}<br>
+<br>
+@if ($data['no_limit'])
+■残りの予約回数：利用回数に制限はありません @if($data['count_plan'])（{{$data['last_date']}}まで）@endif<br>
+@else
+■残りの予約回数：{{$data['count_plan']}}回 @if($data['count_plan'])（{{$data['last_date']}}まで）@endif<br>
+@endif
+<br>
+▼▼マイページで確認する▼▼<br>
+{{ $serviceUrl }}/profile<br>
+<br>
+また、ご不明な点がございましたら<br>
+下記までお気軽にお問い合せくださいませ。<br>
+<br>
+———————————————————————<br>
+ご利用店舗：<br>
+Golph.club Suminoe<br>
+<br>
+住所：大阪市住之江区中加賀屋2-8-1-2F（GoogleMap）<br>
+お問い合わせ 公式LINE：https://page.line.me/421rmord<br>
+店舗ページ：{{ $serviceUrl }}/golph/top<br>
+店舗ウェブサイト：https://golph.club/<br>
+———————————————————————<br>
+{{ $serviceName }}<br>
+{{ $serviceUrl }}<br>
+<br>
+【運営元：{{ $serviceCompany }}】<br>
+{{ $serviceAddress }}<br>
+<br>
+このEメールアドレスは配信専用です。<br>
+このメッセージにはご返信いただけません。<br>
+<br>
+予約内容に関するお問い合わせは、<br>
+各店舗の公式LINEへご連絡をお願いします。<br>
+———————————————————————

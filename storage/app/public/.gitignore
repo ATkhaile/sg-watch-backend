@@ -1,0 +1,7 @@
+*
+!.gitignore
+!chatbot/
+!chatbot/avatars/
+!chatbot/avatars/flu-cleaning-1.png
+!chatbot/avatars/flu-cleaning-2.png
+!chatbot/avatars/flu-cleaning-3.png
