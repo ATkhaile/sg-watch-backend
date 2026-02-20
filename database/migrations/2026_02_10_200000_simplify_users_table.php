@@ -10,9 +10,15 @@ return new class extends Migration {
     {
         // Step 1: Add new columns
         Schema::table('users', function (Blueprint $table) {
-            // $table->string('first_name')->nullable()->after('name');
-            // $table->string('last_name')->nullable()->after('first_name');
-            $table->string('avatar_url')->nullable()->after('last_name');
+            if (!Schema::hasColumn('users', 'first_name')) {
+                $table->string('first_name')->nullable()->after('name');
+            }
+            if (!Schema::hasColumn('users', 'last_name')) {
+                $table->string('last_name')->nullable()->after('first_name');
+            }
+            if (!Schema::hasColumn('users', 'avatar_url')) {
+                $table->string('avatar_url')->nullable()->after('last_name');
+            }
         });
 
         // Step 2: Migrate data - split name into first_name/last_name
@@ -54,6 +60,17 @@ return new class extends Migration {
         ");
 
         // Step 7: Drop foreign key constraints trước khi drop columns
+        // Drop FK from other tables that reference users columns being dropped
+        if (Schema::hasTable('my_sns') && Schema::hasColumn('my_sns', 'user_id')) {
+            try {
+                Schema::table('my_sns', function (Blueprint $table) {
+                    $table->dropForeign('my_sns_user_id_foreign');
+                });
+            } catch (\Exception $e) {
+                // Constraint may not exist, skip
+            }
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $foreignKeys = [
                 'affiliate_id'  => 'users_affiliate_id_foreign',
