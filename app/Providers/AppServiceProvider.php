@@ -43,6 +43,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Address
         $this->app->register(\App\Providers\Domain\AddressDomainProvider::class);
+
+        // Shop
+        $this->app->register(\App\Providers\Domain\ShopProductDomainProvider::class);
     }
 
     /**

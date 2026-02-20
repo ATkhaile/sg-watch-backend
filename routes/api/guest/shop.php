@@ -4,13 +4,13 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Guest Routes (認証不要)
+| Guest Shop Routes
 |--------------------------------------------------------------------------
 |
-| 認証不要で誰でもアクセス可能なルート
+| Public shop routes (no authentication required)
 |
 */
 
-require __DIR__ . '/guest/auth.php';
-require __DIR__ . '/guest/webhooks.php';
-require __DIR__ . '/guest/shop.php';
+Route::prefix('shop')->group(function () {
+    Route::get('products', \App\Http\Actions\Api\ShopProduct\GetProductListAction::class);
+});
