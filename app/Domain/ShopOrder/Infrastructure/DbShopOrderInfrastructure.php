@@ -187,6 +187,88 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         });
     }
 
+    public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array
+    {
+        $order = Order::with('items')->find($orderId);
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        $allowedTransitions = [
+            OrderStatus::PENDING => [OrderStatus::CONFIRMED, OrderStatus::CANCELLED],
+            OrderStatus::CONFIRMED => [OrderStatus::PROCESSING, OrderStatus::CANCELLED],
+            OrderStatus::PROCESSING => [OrderStatus::SHIPPING, OrderStatus::CANCELLED],
+            OrderStatus::SHIPPING => [OrderStatus::DELIVERED],
+            OrderStatus::DELIVERED => [OrderStatus::COMPLETED, OrderStatus::REFUNDED],
+            OrderStatus::COMPLETED => [OrderStatus::REFUNDED],
+        ];
+
+        $allowed = $allowedTransitions[$order->status] ?? [];
+
+        if (!in_array($status, $allowed)) {
+            return [
+                'success' => false,
+                'message' => "Cannot change status from \"{$order->status}\" to \"{$status}\".",
+            ];
+        }
+
+        return DB::transaction(function () use ($order, $status, $extra) {
+            $updateData = ['status' => $status];
+
+            // Set timestamps based on new status
+            switch ($status) {
+                case OrderStatus::CONFIRMED:
+                    $updateData['confirmed_at'] = now();
+                    break;
+                case OrderStatus::SHIPPING:
+                    $updateData['shipped_at'] = now();
+                    if (!empty($extra['tracking_number'])) {
+                        $updateData['tracking_number'] = $extra['tracking_number'];
+                    }
+                    if (!empty($extra['shipping_carrier'])) {
+                        $updateData['shipping_carrier'] = $extra['shipping_carrier'];
+                    }
+                    break;
+                case OrderStatus::DELIVERED:
+                    $updateData['delivered_at'] = now();
+                    break;
+                case OrderStatus::CANCELLED:
+                    $updateData['cancelled_at'] = now();
+                    if (!empty($extra['cancel_reason'])) {
+                        $updateData['cancel_reason'] = $extra['cancel_reason'];
+                    }
+                    break;
+                case OrderStatus::REFUNDED:
+                    $updateData['payment_status'] = PaymentStatus::REFUNDED;
+                    break;
+            }
+
+            // Handle admin note
+            if (isset($extra['admin_note'])) {
+                $updateData['admin_note'] = $extra['admin_note'];
+            }
+
+            // Restore stock on cancel
+            if ($status === OrderStatus::CANCELLED) {
+                foreach ($order->items as $item) {
+                    if ($item->product_id) {
+                        Product::where('id', $item->product_id)
+                            ->increment('stock_quantity', $item->quantity);
+                    }
+                }
+            }
+
+            $order->update($updateData);
+
+            return [
+                'success' => true,
+                'message' => 'Order status updated successfully.',
+                'order' => $this->formatOrder($order->fresh('items')),
+            ];
+        });
+    }
+
     private function buildShippingInfo(UserAddress $address, int $userId): array
     {
         $user = $address->user;
