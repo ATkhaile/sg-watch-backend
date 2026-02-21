@@ -23,7 +23,10 @@ class GetProductDetailAction extends BaseController
 
     public function __invoke(string $slug): GetProductDetailActionResource|JsonResponse
     {
-        $product = $this->useCase->__invoke($slug);
+        $user = auth()->user();
+        $userId = $user ? (int) $user->id : null;
+
+        $product = $this->useCase->__invoke($slug, $userId);
 
         if (!$product) {
             return response()->json([

@@ -3,11 +3,12 @@
 namespace App\Domain\ShopProduct\Infrastructure;
 
 use App\Domain\ShopProduct\Repository\ShopProductRepository;
+use App\Models\Shop\Favorite;
 use App\Models\Shop\Product;
 
 class DbShopProductInfrastructure implements ShopProductRepository
 {
-    public function getList(array $filters): array
+    public function getList(array $filters, ?int $userId = null): array
     {
         $query = Product::query()
             ->where('is_active', true)
@@ -69,8 +70,18 @@ class DbShopProductInfrastructure implements ShopProductRepository
         $perPage = $filters['per_page'] ?? 15;
         $paginator = $query->paginate($perPage);
 
+        $favoritedProductIds = [];
+        if ($userId) {
+            $productIds = collect($paginator->items())->pluck('id');
+            $favoritedProductIds = Favorite::where('user_id', $userId)
+                ->whereIn('product_id', $productIds)
+                ->pluck('product_id')
+                ->toArray();
+        }
+
         return [
             'products' => $paginator->items(),
+            'favorited_product_ids' => $favoritedProductIds,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -80,7 +91,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
-    public function getBySlug(string $slug): ?array
+    public function getBySlug(string $slug, ?int $userId = null): ?array
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
@@ -89,6 +100,13 @@ class DbShopProductInfrastructure implements ShopProductRepository
 
         if (!$product) {
             return null;
+        }
+
+        $isFavorited = false;
+        if ($userId) {
+            $isFavorited = Favorite::where('user_id', $userId)
+                ->where('product_id', $product->id)
+                ->exists();
         }
 
         return [
@@ -116,6 +134,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'review_count' => $product->review_count,
             'view_count' => $product->view_count,
             'sold_count' => $product->sold_count,
+            'is_favorited' => $isFavorited,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
