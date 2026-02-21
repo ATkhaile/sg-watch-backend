@@ -11,11 +11,11 @@ return new class extends Migration
         Schema::create('shop_carts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable()->comment('Null nếu là khách vãng lai');
-            $table->string('session_id')->nullable()->comment('Session cho khách vãng lai');
+            $table->string('device_id')->nullable()->comment('Device UUID for guest cart (mobile/web)');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->index('session_id');
+            $table->index('device_id');
         });
 
         Schema::create('shop_cart_items', function (Blueprint $table) {

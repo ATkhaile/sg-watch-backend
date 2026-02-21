@@ -4,13 +4,13 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Guest Routes (認証不要)
+| Member Shop Cart Routes
 |--------------------------------------------------------------------------
 |
-| 認証不要で誰でもアクセス可能なルート
+| Cart routes that require authentication
 |
 */
 
-require __DIR__ . '/guest/auth.php';
-require __DIR__ . '/guest/webhooks.php';
-require __DIR__ . '/guest/shop.php';
+Route::prefix('shop/cart')->group(function () {
+    Route::post('merge', \App\Http\Actions\Api\ShopCart\MergeCartAction::class);
+});
