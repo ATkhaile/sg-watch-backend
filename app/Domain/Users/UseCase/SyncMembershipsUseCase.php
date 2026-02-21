@@ -4,7 +4,7 @@ namespace App\Domain\Users\UseCase;
 
 use App\Domain\Users\Repository\UserMembershipRepository;
 use App\Domain\Users\Entity\SyncMembershipsRequestEntity;
-use App\Domain\Memberships\Entity\StatusEntity;
+use App\Domain\Users\Entity\StatusEntity;
 use App\Enums\StatusCode;
 use App\Domain\Shared\Concerns\RequiresPermission;
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Responders\Api\Users;
 
-use App\Domain\Memberships\Entity\StatusEntity;
+use App\Domain\Users\Entity\StatusEntity;
 use App\Http\Resources\Api\Users\SyncUserMembershipsActionResource;
 
 class SyncUserMembershipsActionResponder

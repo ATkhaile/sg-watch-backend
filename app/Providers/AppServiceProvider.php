@@ -14,9 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Auth
+        // Auth & Sessions
         $this->app->register(\App\Providers\Domain\AuthDomainProvider::class);
         $this->app->register(\App\Providers\Domain\AuthorizationDomainProvider::class);
+        $this->app->register(\App\Providers\Domain\SessionsDomainProvider::class);
 
         // Users
         $this->app->register(\App\Providers\Domain\UsersDomainProvider::class);
