@@ -24,8 +24,10 @@ class GetProductListAction extends BaseController
     public function __invoke(GetProductListRequest $request): GetProductListActionResource
     {
         $filters = $request->validated();
+        $user = auth()->user();
+        $userId = $user ? (int) $user->id : null;
 
-        $result = $this->useCase->__invoke($filters);
+        $result = $this->useCase->__invoke($filters, $userId);
 
         return $this->responder->__invoke($result);
     }

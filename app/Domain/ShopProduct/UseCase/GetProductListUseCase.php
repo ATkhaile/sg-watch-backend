@@ -13,8 +13,8 @@ final class GetProductListUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(array $filters): array
+    public function __invoke(array $filters, ?int $userId = null): array
     {
-        return $this->repository->getList($filters);
+        return $this->repository->getList($filters, $userId);
     }
 }

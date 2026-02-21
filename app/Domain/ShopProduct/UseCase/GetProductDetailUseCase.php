@@ -13,8 +13,8 @@ final class GetProductDetailUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(string $slug): ?array
+    public function __invoke(string $slug, ?int $userId = null): ?array
     {
-        return $this->repository->getBySlug($slug);
+        return $this->repository->getBySlug($slug, $userId);
     }
 }

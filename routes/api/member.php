@@ -24,4 +24,6 @@ Route::group([
     require __DIR__ . '/member/user_data.php';
     require __DIR__ . '/member/addresses.php';
     require __DIR__ . '/member/shop_cart.php';
+    require __DIR__ . '/member/shop_favorite.php';
+    require __DIR__ . '/member/shop_order.php';
 });
