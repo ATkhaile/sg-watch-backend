@@ -16,6 +16,9 @@ Route::prefix('shop')->group(function () {
     Route::get('products', \App\Http\Actions\Api\ShopProduct\GetProductListAction::class);
     Route::get('products/{slug}', \App\Http\Actions\Api\ShopProduct\GetProductDetailAction::class);
 
+    // Reviews
+    Route::get('products/{productId}/reviews', \App\Http\Actions\Api\ShopReview\GetProductReviewsAction::class);
+
     // Cart (guest + logged-in user)
     Route::get('cart', \App\Http\Actions\Api\ShopCart\GetCartAction::class);
     Route::post('cart/items', \App\Http\Actions\Api\ShopCart\AddToCartAction::class);

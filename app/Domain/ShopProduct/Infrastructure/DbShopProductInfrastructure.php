@@ -206,8 +206,9 @@ class DbShopProductInfrastructure implements ShopProductRepository
         }
 
         return DB::transaction(function () use ($product, $data) {
-            $images = $data['images'] ?? null;
-            unset($data['images']);
+            $newImages = $data['images'] ?? null;
+            $existingImageIds = $data['existing_image_ids'] ?? null;
+            unset($data['images'], $data['existing_image_ids']);
 
             if (isset($data['slug']) && empty($data['slug'])) {
                 $data['slug'] = Str::slug($data['name'] ?? $product->name) . '-' . Str::random(6);
@@ -215,9 +216,34 @@ class DbShopProductInfrastructure implements ShopProductRepository
 
             $product->update($data);
 
-            if ($images !== null) {
-                $product->images()->delete();
-                $this->syncImages($product, $images);
+            if ($existingImageIds !== null || $newImages !== null) {
+                // Delete images not in the keep list
+                if ($existingImageIds !== null) {
+                    $imagesToDelete = $product->images()
+                        ->whereNotIn('id', $existingImageIds)
+                        ->get();
+                    foreach ($imagesToDelete as $img) {
+                        Storage::disk('public')->delete($img->image_url);
+                        $img->delete();
+                    }
+                }
+
+                // Upload new images
+                if ($newImages) {
+                    $startSort = ($product->images()->max('sort_order') ?? -1) + 1;
+                    $hasPrimary = $product->images()->where('is_primary', true)->exists();
+                    foreach ($newImages as $index => $image) {
+                        if ($image instanceof UploadedFile) {
+                            ProductImage::create([
+                                'product_id' => $product->id,
+                                'image_url' => $image->store('products/' . $product->id, 'public'),
+                                'alt_text' => null,
+                                'is_primary' => !$hasPrimary && $index === 0,
+                                'sort_order' => $startSort + $index,
+                            ]);
+                        }
+                    }
+                }
             }
 
             $product->load(['brand:id,name,slug', 'category:id,name,slug', 'images']);

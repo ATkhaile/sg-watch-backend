@@ -42,12 +42,10 @@ class UpdateProductRequest extends ApiFormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
+            'existing_image_ids' => ['nullable', 'array'],
+            'existing_image_ids.*' => ['integer'],
             'images' => ['nullable', 'array'],
-            'images.*' => ['sometimes', 'file', 'image', 'max:5120'],
-            'images.*.image_url' => ['sometimes', 'string', 'max:500'],
-            'images.*.alt_text' => ['nullable', 'string', 'max:255'],
-            'images.*.is_primary' => ['nullable', 'boolean'],
-            'images.*.sort_order' => ['nullable', 'integer'],
+            'images.*' => ['file', 'image', 'max:5120'],
         ];
     }
 }
