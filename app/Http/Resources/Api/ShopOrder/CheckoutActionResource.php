@@ -13,9 +13,11 @@ class CheckoutActionResource extends JsonResource
         return [
             'message' => $this->resource['message'],
             'status_code' => $success ? 201 : 422,
-            'data' => $success ? [
+            'data' => $success ? array_filter([
                 'order' => $this->resource['order'],
-            ] : null,
+                'stripe_client_secret' => $this->resource['stripe_client_secret'] ?? null,
+                'stripe_public_key' => $this->resource['stripe_public_key'] ?? null,
+            ]) : null,
         ];
     }
 

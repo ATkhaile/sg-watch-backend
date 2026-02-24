@@ -9,4 +9,5 @@ interface ShopOrderRepository
     public function getDetail(int $userId, int $orderId): ?array;
     public function cancel(int $userId, int $orderId, ?string $reason): array;
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array;
+    public function handleStripeWebhook(string $payload, string $signature): array;
 }

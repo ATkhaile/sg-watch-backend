@@ -56,4 +56,10 @@ return [
         'key_id' => env('APPLE_KEY_ID'),
         'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
     ],
+
+    'stripe' => [
+        'secret_key' => env('STRIPE_SECRET_KEY'),
+        'public_key' => env('STRIPE_PUBLISH_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
 ];

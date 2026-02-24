@@ -8,8 +8,8 @@ use BenSampo\Enum\Enum;
 
 final class PaymentMethod extends Enum
 {
-    public const COD = 'cod';
     public const BANK_TRANSFER = 'bank_transfer';
-    public const CREDIT_CARD = 'credit_card';
+    public const COD = 'cod';
+    public const DEPOSIT_TRANSFER = 'deposit_transfer';
     public const STRIPE = 'stripe';
 }

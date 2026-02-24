@@ -4,6 +4,7 @@ namespace App\Domain\ShopOrder\Infrastructure;
 
 use App\Domain\ShopOrder\Repository\ShopOrderRepository;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\ShippingMethod;
 use App\Models\Shop\Cart;
@@ -11,7 +12,10 @@ use App\Models\Shop\Order;
 use App\Models\Shop\OrderItem;
 use App\Models\Shop\Product;
 use App\Models\UserAddress;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Stripe\StripeClient;
 
 class DbShopOrderInfrastructure implements ShopOrderRepository
 {
@@ -55,20 +59,31 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         }
 
         $shippingFee = $this->calculateShippingFee($data['shipping_method'], $currency);
-        $totalAmount = $subtotal + $shippingFee;
+        $codFee = $this->calculateCodFee($data['payment_method'], $currency);
+        $depositAmount = $this->calculateDepositAmount($data['payment_method'], $currency);
+        $totalAmount = $subtotal + $shippingFee + $codFee;
 
         $shippingInfo = $this->buildShippingInfo($address, $userId);
 
-        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $totalAmount, $shippingInfo) {
+        // Upload payment receipt
+        $receiptPath = null;
+        if (isset($data['payment_receipt']) && $data['payment_receipt'] instanceof UploadedFile) {
+            $receiptPath = $data['payment_receipt']->store('orders/receipts/' . $userId, 'public');
+        }
+
+        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $totalAmount, $shippingInfo, $receiptPath) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $userId,
                 'status' => OrderStatus::PENDING,
                 'payment_status' => PaymentStatus::PENDING,
                 'payment_method' => $data['payment_method'],
+                'payment_receipt' => $receiptPath,
                 'shipping_method' => $data['shipping_method'],
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
+                'cod_fee' => $codFee,
+                'deposit_amount' => $depositAmount,
                 'discount_amount' => 0,
                 'total_amount' => $totalAmount,
                 'currency' => $currency,
@@ -103,13 +118,31 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $cart->items()->delete();
             $cart->delete();
 
+            // Create Stripe PaymentIntent if payment method is stripe
+            $stripeClientSecret = null;
+            if ($data['payment_method'] === PaymentMethod::STRIPE) {
+                $stripeResult = $this->createStripePaymentIntent($order, $totalAmount, $currency);
+                if (!$stripeResult['success']) {
+                    throw new \RuntimeException($stripeResult['message']);
+                }
+                $order->update(['stripe_payment_intent_id' => $stripeResult['payment_intent_id']]);
+                $stripeClientSecret = $stripeResult['client_secret'];
+            }
+
             $order->load('items');
 
-            return [
+            $response = [
                 'success' => true,
                 'message' => 'Order placed successfully.',
                 'order' => $this->formatOrder($order),
             ];
+
+            if ($stripeClientSecret) {
+                $response['stripe_client_secret'] = $stripeClientSecret;
+                $response['stripe_public_key'] = config('services.stripe.public_key');
+            }
+
+            return $response;
         });
     }
 
@@ -322,6 +355,94 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return $fees[$shippingMethod][$currency] ?? 0;
     }
 
+    private function calculateCodFee(string $paymentMethod, string $currency): int
+    {
+        if ($paymentMethod !== PaymentMethod::COD) {
+            return 0;
+        }
+
+        // 代引き手数料: 1,200 JPY fixed
+        return $currency === 'JPY' ? 1200 : 0;
+    }
+
+    private function calculateDepositAmount(string $paymentMethod, string $currency): int
+    {
+        if ($paymentMethod !== PaymentMethod::DEPOSIT_TRANSFER) {
+            return 0;
+        }
+
+        // Deposit: 1,000,000 VND for Vietnamese customers
+        return 1000000;
+    }
+
+    private function createStripePaymentIntent(Order $order, int $totalAmount, string $currency): array
+    {
+        try {
+            $stripe = new StripeClient(config('services.stripe.secret_key'));
+
+            $paymentIntent = $stripe->paymentIntents->create([
+                'amount' => $currency === 'JPY' ? $totalAmount : $totalAmount,
+                'currency' => strtolower($currency),
+                'metadata' => [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ],
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
+            ]);
+
+            return [
+                'success' => true,
+                'payment_intent_id' => $paymentIntent->id,
+                'client_secret' => $paymentIntent->client_secret,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Stripe payment failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    public function handleStripeWebhook(string $payload, string $signature): array
+    {
+        try {
+            $event = \Stripe\Webhook::constructEvent(
+                $payload,
+                $signature,
+                config('services.stripe.webhook_secret')
+            );
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Webhook signature verification failed.'];
+        }
+
+        if ($event->type === 'payment_intent.succeeded') {
+            $paymentIntent = $event->data->object;
+            $order = Order::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+
+            if ($order) {
+                $order->update([
+                    'payment_status' => PaymentStatus::PAID,
+                    'paid_at' => now(),
+                ]);
+            }
+        }
+
+        if ($event->type === 'payment_intent.payment_failed') {
+            $paymentIntent = $event->data->object;
+            $order = Order::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+
+            if ($order) {
+                $order->update([
+                    'payment_status' => PaymentStatus::FAILED,
+                ]);
+            }
+        }
+
+        return ['success' => true, 'message' => 'Webhook handled.'];
+    }
+
     private function formatOrder(Order $order): array
     {
         return [
@@ -330,9 +451,12 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'payment_method' => $order->payment_method,
+            'payment_receipt' => $order->payment_receipt,
             'shipping_method' => $order->shipping_method,
             'subtotal' => $order->subtotal,
             'shipping_fee' => $order->shipping_fee,
+            'cod_fee' => $order->cod_fee,
+            'deposit_amount' => $order->deposit_amount,
             'discount_amount' => $order->discount_amount,
             'total_amount' => $order->total_amount,
             'currency' => $order->currency,

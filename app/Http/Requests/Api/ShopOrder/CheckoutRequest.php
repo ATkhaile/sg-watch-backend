@@ -31,8 +31,9 @@ class CheckoutRequest extends ApiFormRequest
                     }
                 },
             ],
-            'payment_method' => ['required', 'string', 'in:' . PaymentMethod::COD . ',' . PaymentMethod::BANK_TRANSFER],
+            'payment_method' => ['required', 'string', 'in:' . implode(',', PaymentMethod::getValues())],
             'shipping_method' => ['required', 'string', 'in:' . implode(',', ShippingMethod::getValues())],
+            'payment_receipt' => ['nullable', 'file', 'image', 'max:5120'],
             'note' => ['nullable', 'string', 'max:1000'],
             'currency' => ['nullable', 'string', 'in:JPY,VND'],
         ];
