@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('shop')->group(function () {
     // Products
     Route::get('products', \App\Http\Actions\Api\ShopProduct\GetProductListAction::class);
+    Route::get('products/best-sellers', \App\Http\Actions\Api\ShopProduct\GetBestSellersAction::class);
     Route::get('products/{slug}', \App\Http\Actions\Api\ShopProduct\GetProductDetailAction::class);
 
     // Reviews

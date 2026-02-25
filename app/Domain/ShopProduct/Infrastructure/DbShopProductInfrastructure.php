@@ -97,6 +97,64 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function getBestSellers(int $limit): array
+    {
+        // Get top sellers
+        $products = Product::query()
+            ->where('is_active', true)
+            ->where('sold_count', '>', 0)
+            ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+            ->orderByDesc('sold_count')
+            ->limit($limit)
+            ->get();
+
+        // Fill remaining slots with random products
+        if ($products->count() < $limit) {
+            $excludeIds = $products->pluck('id')->toArray();
+            $remaining = Product::query()
+                ->where('is_active', true)
+                ->whereNotIn('id', $excludeIds)
+                ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+                ->inRandomOrder()
+                ->limit($limit - $products->count())
+                ->get();
+
+            $products = $products->concat($remaining);
+        }
+
+        return $products->map(fn ($product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'sku' => $product->sku,
+            'short_description' => $product->short_description,
+            'price_jpy' => $product->price_jpy,
+            'price_vnd' => $product->price_vnd,
+            'original_price_jpy' => $product->original_price_jpy,
+            'original_price_vnd' => $product->original_price_vnd,
+            'points' => $product->points,
+            'gender' => $product->gender,
+            'movement_type' => $product->movement_type,
+            'condition' => $product->condition,
+            'stock_quantity' => $product->stock_quantity,
+            'is_featured' => $product->is_featured,
+            'average_rating' => $product->average_rating,
+            'review_count' => $product->review_count,
+            'sold_count' => $product->sold_count,
+            'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
+            'brand' => $product->brand ? [
+                'id' => $product->brand->id,
+                'name' => $product->brand->name,
+                'slug' => $product->brand->slug,
+            ] : null,
+            'category' => $product->category ? [
+                'id' => $product->category->id,
+                'name' => $product->category->name,
+                'slug' => $product->category->slug,
+            ] : null,
+        ])->toArray();
+    }
+
     public function getBySlug(string $slug, ?int $userId = null): ?array
     {
         $product = Product::where('slug', $slug)
