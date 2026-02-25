@@ -13,7 +13,6 @@ return [
     App\Providers\Domain\EntitlementDomainProvider::class,
     App\Providers\Domain\MusicDomainProvider::class,
     App\Providers\Domain\GroupJoinRequestDomainProvider::class,
-    App\Providers\Domain\UserCommunitySettingDomainProvider::class,
     App\Providers\LocaleServiceProvider::class,
     Barryvdh\Debugbar\ServiceProvider::class,
     Tymon\JWTAuth\Providers\LaravelServiceProvider::class,

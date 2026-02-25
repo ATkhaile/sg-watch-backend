@@ -107,9 +107,6 @@ class User extends Authenticatable implements JWTSubject, AuditableContract
             $user->invite_code = $user->invite_code . '_' . $timeFormat;
             $user->save();
         });
-        static::created(function ($user) {
-            $user->userCommunitySetting()->create();
-        });
     }
 
     // =========================================================================
@@ -201,10 +198,6 @@ class User extends Authenticatable implements JWTSubject, AuditableContract
         return $this->hasMany(CommunityPost::class, 'created_by')->where('flag_story', Boolean::TRUE)->where('story_expired', '>', Carbon::now());
     }
 
-    public function userCommunitySetting(): HasOne
-    {
-        return $this->hasOne(UserCommunitySetting::class, 'user_id');
-    }
 
     public function mutedUsers(): BelongsToMany
     {

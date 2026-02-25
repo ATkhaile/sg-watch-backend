@@ -21,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Users
         $this->app->register(\App\Providers\Domain\UsersDomainProvider::class);
+        $this->app->register(\App\Providers\Domain\AdminUserDomainProvider::class);
 
         // Chat
         $this->app->register(\App\Providers\Domain\ChatDomainProvider::class);
