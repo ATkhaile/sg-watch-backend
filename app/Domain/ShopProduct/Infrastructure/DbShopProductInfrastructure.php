@@ -173,6 +173,90 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function adminGetList(array $filters): array
+    {
+        $query = Product::query()
+            ->with(['brand:id,name,slug', 'category:id,name,slug', 'images']);
+
+        // Search by name/sku
+        if (!empty($filters['keyword'])) {
+            $keyword = '%' . $filters['keyword'] . '%';
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', $keyword)
+                  ->orWhere('sku', 'like', $keyword);
+            });
+        }
+
+        // Filter by gender
+        if (!empty($filters['gender'])) {
+            $query->where('gender', $filters['gender']);
+        }
+
+        // Filter by brand
+        if (!empty($filters['brand_id'])) {
+            $query->where('brand_id', $filters['brand_id']);
+        }
+
+        // Filter by category
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        // Filter by movement type
+        if (!empty($filters['movement_type'])) {
+            $query->where('movement_type', $filters['movement_type']);
+        }
+
+        // Filter by is_active
+        if (isset($filters['is_active'])) {
+            $query->where('is_active', $filters['is_active']);
+        }
+
+        // Filter by in stock
+        if (isset($filters['in_stock'])) {
+            if ($filters['in_stock']) {
+                $query->where('stock_quantity', '>', 0);
+            } else {
+                $query->where('stock_quantity', '<=', 0);
+            }
+        }
+
+        // Sorting
+        $sortBy = $filters['sort_by'] ?? 'newest';
+        match ($sortBy) {
+            'price_asc' => $query->orderBy('price_jpy', 'asc'),
+            'price_desc' => $query->orderBy('price_jpy', 'desc'),
+            'name_asc' => $query->orderBy('name', 'asc'),
+            'name_desc' => $query->orderBy('name', 'desc'),
+            default => $query->orderBy('created_at', 'desc'),
+        };
+
+        $perPage = $filters['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'products' => collect($paginator->items())->map(fn ($product) => $this->formatProduct($product))->toArray(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
+    }
+
+    public function adminGetById(int $id): ?array
+    {
+        $product = Product::with(['brand:id,name,slug,logo_url,country', 'category:id,name,slug,parent_id', 'images', 'approvedReviews.user:id,first_name,last_name'])
+            ->find($id);
+
+        if (!$product) {
+            return null;
+        }
+
+        return $this->formatProduct($product);
+    }
+
     public function create(array $data): array
     {
         return DB::transaction(function () use ($data) {
