@@ -19,10 +19,15 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
+        // Seeder実行中はObserverを無効化
+        User::unsetEventDispatcher();
+        Role::unsetEventDispatcher();
+
         // 初期管理者アカウント
         $admin = User::firstOrCreate(
             ['email' => 'account+init@gameagelayer.com'],
             [
+                'uuid' => Str::uuid()->toString(),
                 'first_name' => 'System',
                 'last_name' => 'Admin',
                 'email' => 'account+init@gameagelayer.com',
@@ -57,12 +62,15 @@ class UserSeeder extends Seeder
 
         if (!$userRole) {
             // フォールバック: PermissionSeederが実行されていない場合
-            $userRole = Role::create([
-                'name' => 'user',
-                'display_name' => 'ユーザー',
-                'description' => '一般ユーザー向けのデフォルトロール',
-                'is_system' => true,
-            ]);
+            // RoleObserverを無効化してRole作成
+            $userRole = Role::withoutEvents(function () {
+                return Role::create([
+                    'name' => 'user',
+                    'display_name' => 'ユーザー',
+                    'description' => '一般ユーザー向けのデフォルトロール',
+                    'is_system' => true,
+                ]);
+            });
         }
 
         return $userRole;
@@ -90,6 +98,7 @@ class UserSeeder extends Seeder
             $user = User::firstOrCreate(
                 ['email' => $userData['email']],
                 [
+                    'uuid' => Str::uuid()->toString(),
                     'first_name' => $userData['first_name'],
                     'last_name' => $userData['last_name'],
                     'email' => $userData['email'],
