@@ -37,11 +37,12 @@ class UpdateProfileRequest extends ApiFormRequest
                 'date_format:Y-m-d',
                 'before:today',
             ],
-            'avatar_url' => [
+            'avatar' => [
                 'sometimes',
                 'nullable',
-                'string',
-                'max:500',
+                'image',
+                'mimes:jpeg,png,jpg,gif',
+                'max:51200',
             ],
         ];
     }
@@ -55,7 +56,9 @@ class UpdateProfileRequest extends ApiFormRequest
             'birthday.date' => __('auth.validation.birthday.date'),
             'birthday.date_format' => __('auth.validation.birthday.date_format'),
             'birthday.before' => __('auth.validation.birthday.before'),
-            'avatar_url.max' => __('auth.validation.avatar_url.max'),
+            'avatar.image' => __('auth.validation.avatar.image'),
+            'avatar.mimes' => __('auth.validation.avatar.mimes'),
+            'avatar.max' => __('auth.validation.avatar.max'),
         ];
     }
 }
