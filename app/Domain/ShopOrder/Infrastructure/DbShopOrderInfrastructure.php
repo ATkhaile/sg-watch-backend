@@ -2,6 +2,7 @@
 
 namespace App\Domain\ShopOrder\Infrastructure;
 
+use App\Components\CommonComponent;
 use App\Domain\ShopOrder\Repository\ShopOrderRepository;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -218,6 +219,86 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'order' => $this->formatOrder($order->fresh('items')),
             ];
         });
+    }
+
+    public function adminGetList(array $filters): array
+    {
+        $query = Order::query()
+            ->with(['items', 'user:id,first_name,last_name,email'])
+            ->orderByDesc('created_at');
+
+        // Filter by status
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        // Filter by payment_status
+        if (!empty($filters['payment_status'])) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
+
+        // Filter by payment_method
+        if (!empty($filters['payment_method'])) {
+            $query->where('payment_method', $filters['payment_method']);
+        }
+
+        // Search by order_number or user name/email
+        if (!empty($filters['keyword'])) {
+            $keyword = '%' . $filters['keyword'] . '%';
+            $query->where(function ($q) use ($keyword) {
+                $q->where('order_number', 'like', $keyword)
+                  ->orWhereHas('user', function ($uq) use ($keyword) {
+                      $uq->where('first_name', 'like', $keyword)
+                        ->orWhere('last_name', 'like', $keyword)
+                        ->orWhere('email', 'like', $keyword);
+                  });
+            });
+        }
+
+        // Sort
+        $sortBy = $filters['sort_by'] ?? 'newest';
+        match ($sortBy) {
+            'oldest' => $query->orderBy('created_at', 'asc'),
+            'total_asc' => $query->orderBy('total_amount', 'asc'),
+            'total_desc' => $query->orderBy('total_amount', 'desc'),
+            default => $query->orderBy('created_at', 'desc'),
+        };
+
+        $perPage = $filters['per_page'] ?? 15;
+        $paginator = $query->paginate($perPage);
+
+        return [
+            'orders' => collect($paginator->items())->map(fn (Order $order) => $this->formatAdminOrderSummary($order))->toArray(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
+    }
+
+    public function adminGetDetail(int $orderId): ?array
+    {
+        $order = Order::with(['items', 'user:id,uuid,first_name,last_name,email'])
+            ->find($orderId);
+
+        if (!$order) {
+            return null;
+        }
+
+        $data = $this->formatOrder($order);
+        $data['admin_note'] = $order->admin_note;
+        $data['user'] = $order->user ? [
+            'id' => $order->user->id,
+            'uuid' => $order->user->uuid,
+            'first_name' => $order->user->first_name,
+            'last_name' => $order->user->last_name,
+            'full_name' => $order->user->full_name,
+            'email' => $order->user->email,
+        ] : null;
+
+        return $data;
     }
 
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array
@@ -481,7 +562,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'product_id' => $item->product_id,
                 'product_name' => $item->product_name,
                 'product_sku' => $item->product_sku,
-                'product_image' => $item->product_image,
+                'product_image' => $item->product_image ? CommonComponent::getFullUrl($item->product_image) : null,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'total_price' => $item->total_price,
@@ -501,6 +582,29 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'total_amount' => $order->total_amount,
             'currency' => $order->currency,
             'total_items' => $order->items->sum('quantity'),
+            'created_at' => $order->created_at?->toIso8601String(),
+        ];
+    }
+
+    private function formatAdminOrderSummary(Order $order): array
+    {
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'payment_method' => $order->payment_method,
+            'shipping_method' => $order->shipping_method,
+            'total_amount' => $order->total_amount,
+            'currency' => $order->currency,
+            'total_items' => $order->items->sum('quantity'),
+            'user' => $order->user ? [
+                'id' => $order->user->id,
+                'first_name' => $order->user->first_name,
+                'last_name' => $order->user->last_name,
+                'full_name' => $order->user->full_name,
+                'email' => $order->user->email,
+            ] : null,
             'created_at' => $order->created_at?->toIso8601String(),
         ];
     }
