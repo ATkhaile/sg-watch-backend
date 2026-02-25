@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // User Info / Profile
 Route::get('user-info', \App\Http\Actions\Api\Auth\UserInfoAction::class);
-Route::put('update-profile', \App\Http\Actions\Api\Auth\UpdateProfileAction::class);
+Route::post('update-profile', \App\Http\Actions\Api\Auth\UpdateProfileAction::class);
 Route::post('update-avatar', \App\Http\Actions\Api\Auth\UpdateAvatarAction::class);
 Route::delete('delete-avatar', \App\Http\Actions\Api\Auth\DeleteAvatarAction::class);
 Route::get('logout', \App\Http\Actions\Api\Auth\LogoutAction::class);
