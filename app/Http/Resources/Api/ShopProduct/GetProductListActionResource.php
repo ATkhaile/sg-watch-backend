@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\ShopProduct;
 
+use App\Components\CommonComponent;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class GetProductListActionResource extends JsonResource
@@ -33,7 +34,7 @@ class GetProductListActionResource extends JsonResource
                         'is_featured' => $product->is_featured,
                         'average_rating' => $product->average_rating,
                         'review_count' => $product->review_count,
-                        'primary_image_url' => $product->primary_image_url,
+                        'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
                         'is_favorited' => in_array($product->id, $favoritedProductIds),
                         'brand' => $product->brand ? [
                             'id' => $product->brand->id,

@@ -2,6 +2,7 @@
 
 namespace App\Domain\ShopProduct\Infrastructure;
 
+use App\Components\CommonComponent;
 use App\Domain\ShopProduct\Repository\ShopProductRepository;
 use App\Models\Shop\Favorite;
 use App\Models\Shop\Product;
@@ -144,7 +145,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
                 'slug' => $product->brand->slug,
-                'logo_url' => $product->brand->logo_url,
+                'logo_url' => $product->brand->logo_url ? CommonComponent::getFullUrl($product->brand->logo_url) : null,
                 'country' => $product->brand->country,
             ] : null,
             'category' => $product->category ? [
@@ -155,7 +156,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             ] : null,
             'images' => $product->images->map(fn ($img) => [
                 'id' => $img->id,
-                'image_url' => $img->image_url,
+                'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
                 'is_primary' => $img->is_primary,
                 'sort_order' => $img->sort_order,
             ])->toArray(),
