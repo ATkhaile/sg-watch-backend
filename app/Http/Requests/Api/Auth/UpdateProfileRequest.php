@@ -34,7 +34,7 @@ class UpdateProfileRequest extends ApiFormRequest
                 'sometimes',
                 'nullable',
                 'date',
-                'date_format:Y-m-d',
+                'date_format:Y/m/d',
                 'before:today',
             ],
             'avatar' => [
