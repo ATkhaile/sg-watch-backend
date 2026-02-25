@@ -7,6 +7,7 @@ use App\Models\UserAddress;
 use App\Models\UserAddressJp;
 use App\Models\UserAddressVn;
 use App\Components\CommonComponent;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class DbAddressInfrastructure implements AddressRepository
@@ -149,9 +150,15 @@ class DbAddressInfrastructure implements AddressRepository
 
             DB::commit();
             return $address->id;
+        } catch (QueryException $e) {
+            DB::rollBack();
+            if ($e->errorInfo[1] === 1062) {
+                throw new \Exception(__('address.label.duplicate'));
+            }
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return null;
+            throw $e;
         }
     }
 
@@ -209,9 +216,15 @@ class DbAddressInfrastructure implements AddressRepository
 
             DB::commit();
             return true;
+        } catch (QueryException $e) {
+            DB::rollBack();
+            if ($e->errorInfo[1] === 1062) {
+                throw new \Exception(__('address.label.duplicate'));
+            }
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return false;
+            throw $e;
         }
     }
 

@@ -18,4 +18,7 @@ return [
     ],
     'not_found' => 'Address not found.',
     'country_code_immutable' => 'Country code cannot be changed.',
+    'label' => [
+        'duplicate' => 'This label is already in use.',
+    ],
 ];

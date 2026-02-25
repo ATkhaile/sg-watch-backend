@@ -25,11 +25,19 @@ class UpdateAddressAction extends BaseController
         $this->responder = $responder;
     }
 
-    public function __invoke(UpdateAddressRequest $request, int $id): UpdateAddressActionResource
+    public function __invoke(UpdateAddressRequest $request, int $id): UpdateAddressActionResource|\Illuminate\Http\JsonResponse
     {
-        $entity = $this->factory->createFromRequest($request, $id);
-        $addresses = $this->updateAddressUseCase->__invoke($entity);
+        try {
+            $entity = $this->factory->createFromRequest($request, $id);
+            $addresses = $this->updateAddressUseCase->__invoke($entity);
 
-        return $this->responder->__invoke($addresses);
+            return $this->responder->__invoke($addresses);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'status_code' => 422,
+                'data' => null,
+            ], 422);
+        }
     }
 }

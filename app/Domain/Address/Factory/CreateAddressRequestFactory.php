@@ -18,13 +18,18 @@ class CreateAddressRequestFactory
             $detail = $request->input('vn_detail', []);
         }
 
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $imageUrl = $request->file('image')->store('addresses', 'public');
+        }
+
         return new CreateAddressRequestEntity(
             label: $request->input('label'),
             countryCode: $countryCode,
             inputMode: $request->input('input_mode', 'manual'),
             postalCode: $request->input('postal_code'),
             phone: $request->input('phone'),
-            imageUrl: $request->input('image_url'),
+            imageUrl: $imageUrl,
             isDefault: (bool) $request->input('is_default', false),
             detail: $detail,
         );

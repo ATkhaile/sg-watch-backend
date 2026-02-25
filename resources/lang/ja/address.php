@@ -18,4 +18,7 @@ return [
     ],
     'not_found' => '住所が見つかりません。',
     'country_code_immutable' => '国コードは変更できません。',
+    'label' => [
+        'duplicate' => 'このラベルは既に使用されています。',
+    ],
 ];

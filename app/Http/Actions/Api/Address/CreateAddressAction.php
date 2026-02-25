@@ -25,11 +25,19 @@ class CreateAddressAction extends BaseController
         $this->responder = $responder;
     }
 
-    public function __invoke(CreateAddressRequest $request): CreateAddressActionResource
+    public function __invoke(CreateAddressRequest $request): CreateAddressActionResource|\Illuminate\Http\JsonResponse
     {
-        $entity = $this->factory->createFromRequest($request);
-        $addresses = $this->createAddressUseCase->__invoke($entity);
+        try {
+            $entity = $this->factory->createFromRequest($request);
+            $addresses = $this->createAddressUseCase->__invoke($entity);
 
-        return $this->responder->__invoke($addresses);
+            return $this->responder->__invoke($addresses);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'status_code' => 422,
+                'data' => null,
+            ], 422);
+        }
     }
 }

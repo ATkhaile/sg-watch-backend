@@ -23,20 +23,20 @@ class CreateAddressRequest extends ApiFormRequest
             'input_mode' => ['required', Rule::in(['manual', 'image_only'])],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'image_url' => ['nullable', 'string', 'max:500'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'],
             'is_default' => ['sometimes', 'boolean'],
         ];
 
         // JP + image_only: image required
         if ($countryCode === 'JP' && $inputMode === 'image_only') {
-            $rules['image_url'] = ['required', 'string', 'max:500'];
+            $rules['image'] = ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
         }
 
         // JP + manual: address fields + image required
         if ($countryCode === 'JP' && $inputMode === 'manual') {
             $rules['postal_code'] = ['required', 'string', 'max:20'];
             $rules['phone'] = ['required', 'string', 'max:30'];
-            $rules['image_url'] = ['required', 'string', 'max:500'];
+            $rules['image'] = ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
             $rules['jp_detail'] = ['required', 'array'];
             $rules['jp_detail.prefecture'] = ['required', 'string', 'max:50'];
             $rules['jp_detail.city'] = ['required', 'string', 'max:100'];
