@@ -14,49 +14,11 @@ class DbAddressInfrastructure implements AddressRepository
 {
     public function getAllByUserId(int $userId): array
     {
-        $addresses = UserAddress::where('user_id', $userId)
-            ->with(['jpDetail', 'vnDetail'])
+        return UserAddress::where('user_id', $userId)
             ->orderByDesc('is_default')
             ->orderByDesc('created_at')
-            ->get();
-
-        return $addresses->map(function (UserAddress $address) {
-            $data = [
-                'id' => $address->id,
-                'label' => $address->label,
-                'country_code' => $address->country_code,
-                'input_mode' => $address->input_mode,
-                'postal_code' => $address->postal_code,
-                'phone' => $address->phone,
-                'image_url' => $address->image_url ? CommonComponent::getFullUrl($address->image_url) : null,
-                'is_default' => $address->is_default,
-                'created_at' => $address->created_at?->format('Y-m-d H:i:s'),
-            ];
-
-            if ($address->country_code === 'JP' && $address->jpDetail) {
-                $data['jp_detail'] = [
-                    'prefecture' => $address->jpDetail->prefecture,
-                    'city' => $address->jpDetail->city,
-                    'ward_town' => $address->jpDetail->ward_town,
-                    'banchi' => $address->jpDetail->banchi,
-                    'building_name' => $address->jpDetail->building_name,
-                    'room_no' => $address->jpDetail->room_no,
-                ];
-            }
-
-            if ($address->country_code === 'VN' && $address->vnDetail) {
-                $data['vn_detail'] = [
-                    'province_city' => $address->vnDetail->province_city,
-                    'district' => $address->vnDetail->district,
-                    'ward_commune' => $address->vnDetail->ward_commune,
-                    'detail_address' => $address->vnDetail->detail_address,
-                    'building_name' => $address->vnDetail->building_name,
-                    'room_no' => $address->vnDetail->room_no,
-                ];
-            }
-
-            return $data;
-        })->toArray();
+            ->get(['id', 'label', 'country_code'])
+            ->toArray();
     }
 
     public function getById(int $addressId, int $userId): ?array
