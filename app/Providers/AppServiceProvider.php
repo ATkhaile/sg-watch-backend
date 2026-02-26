@@ -51,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->register(\App\Providers\Domain\ShopFavoriteDomainProvider::class);
         $this->app->register(\App\Providers\Domain\ShopOrderDomainProvider::class);
         $this->app->register(\App\Providers\Domain\ShopReviewDomainProvider::class);
+
+        // Banner
+        $this->app->register(\App\Providers\Domain\BannerDomainProvider::class);
     }
 
     /**

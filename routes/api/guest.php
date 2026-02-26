@@ -14,3 +14,4 @@ use Illuminate\Support\Facades\Route;
 require __DIR__ . '/guest/auth.php';
 require __DIR__ . '/guest/webhooks.php';
 require __DIR__ . '/guest/shop.php';
+require __DIR__ . '/guest/banner.php';
