@@ -61,6 +61,22 @@ class Product extends Model
 
     protected $appends = ['primary_image_url'];
 
+    private const JPY_TO_VND_RATE = 180;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if ($product->isDirty('price_jpy')) {
+                $product->price_vnd = $product->price_jpy * self::JPY_TO_VND_RATE;
+            }
+            if ($product->isDirty('original_price_jpy')) {
+                $product->original_price_vnd = $product->original_price_jpy
+                    ? $product->original_price_jpy * self::JPY_TO_VND_RATE
+                    : null;
+            }
+        });
+    }
+
     // =========================================================================
     // Accessors
     // =========================================================================
