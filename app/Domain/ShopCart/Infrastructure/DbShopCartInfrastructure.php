@@ -2,6 +2,7 @@
 
 namespace App\Domain\ShopCart\Infrastructure;
 
+use App\Components\CommonComponent;
 use App\Domain\ShopCart\Repository\ShopCartRepository;
 use App\Models\Shop\Cart;
 use App\Models\Shop\CartItem;
@@ -42,7 +43,7 @@ class DbShopCartInfrastructure implements ShopCartRepository
                     'price_jpy' => $product->price_jpy,
                     'price_vnd' => $product->price_vnd,
                     'stock_quantity' => $product->stock_quantity,
-                    'primary_image_url' => $product->primary_image_url,
+                    'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
                     'brand' => $product->brand ? [
                         'id' => $product->brand->id,
                         'name' => $product->brand->name,
