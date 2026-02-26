@@ -2,6 +2,7 @@
 
 namespace App\Models\Shop;
 
+use App\Models\DiscountCode;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,7 @@ class Order extends Model
         'delivered_at',
         'cancelled_at',
         'cancel_reason',
+        'discount_code_id',
     ];
 
     protected function casts(): array
@@ -76,6 +78,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'order_id');
+    }
+
+    public function discountCode(): BelongsTo
+    {
+        return $this->belongsTo(DiscountCode::class);
     }
 
     public static function generateOrderNumber(): string

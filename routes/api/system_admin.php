@@ -19,4 +19,5 @@ Route::group([
     require __DIR__ . '/system_admin/shop_order.php';
     require __DIR__ . '/system_admin/user.php';
     require __DIR__ . '/system_admin/banner.php';
+    require __DIR__ . '/system_admin/discount_code.php';
 });

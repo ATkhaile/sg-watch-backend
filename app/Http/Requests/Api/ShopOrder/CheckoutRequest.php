@@ -36,6 +36,7 @@ class CheckoutRequest extends ApiFormRequest
             'payment_receipt' => ['nullable', 'file', 'image', 'max:5120'],
             'note' => ['nullable', 'string', 'max:1000'],
             'currency' => ['nullable', 'string', 'in:JPY,VND'],
+            'discount_code' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\ShippingMethod;
+use App\Models\DiscountCode;
 use App\Models\Shop\Cart;
 use App\Models\Shop\Order;
 use App\Models\Shop\OrderItem;
@@ -63,7 +64,24 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $shippingFee = $this->calculateShippingFee($data['shipping_method'], $currency);
         $codFee = $this->calculateCodFee($data['payment_method'], $currency);
         $depositAmount = $this->calculateDepositAmount($data['payment_method'], $currency);
-        $totalAmount = $subtotal + $shippingFee + $codFee;
+
+        // Validate discount code
+        $discountAmount = 0;
+        $discountCode = null;
+        if (!empty($data['discount_code'])) {
+            $discountCode = DiscountCode::where('code', $data['discount_code'])
+                ->where('is_active', true)
+                ->where('quantity', '>', 0)
+                ->first();
+
+            if (!$discountCode) {
+                return ['success' => false, 'message' => 'Discount code is invalid or not available.'];
+            }
+
+            $discountAmount = (int) floor($subtotal * $discountCode->percentage / 100);
+        }
+
+        $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount;
 
         $shippingInfo = $this->buildShippingInfo($address, $userId);
 
@@ -73,7 +91,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $receiptPath = $data['payment_receipt']->store('orders/receipts/' . $userId, 'public');
         }
 
-        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $totalAmount, $shippingInfo, $receiptPath) {
+        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $discountCode, $totalAmount, $shippingInfo, $receiptPath) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $userId,
@@ -86,9 +104,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'shipping_fee' => $shippingFee,
                 'cod_fee' => $codFee,
                 'deposit_amount' => $depositAmount,
-                'discount_amount' => 0,
+                'discount_amount' => $discountAmount,
                 'total_amount' => $totalAmount,
                 'currency' => $currency,
+                'coupon_code' => $discountCode?->code,
+                'discount_code_id' => $discountCode?->id,
                 'shipping_name' => $shippingInfo['name'],
                 'shipping_phone' => $shippingInfo['phone'],
                 'shipping_address' => $shippingInfo['address'],
@@ -97,6 +117,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'shipping_postal_code' => $shippingInfo['postal_code'],
                 'note' => $data['note'] ?? null,
             ]);
+
+            // Decrement discount code quantity
+            if ($discountCode) {
+                $discountCode->decrement('quantity', 1);
+            }
 
             foreach ($cart->items as $item) {
                 $product = $item->product;
@@ -206,6 +231,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     Product::where('id', $item->product_id)
                         ->increment('stock_quantity', $item->quantity);
                 }
+            }
+
+            // Restore discount code quantity
+            if ($order->discount_code_id) {
+                DiscountCode::where('id', $order->discount_code_id)->increment('quantity', 1);
             }
 
             $order->update([
@@ -364,13 +394,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $updateData['admin_note'] = $extra['admin_note'];
             }
 
-            // Restore stock on cancel
+            // Restore stock and discount code on cancel
             if ($status === OrderStatus::CANCELLED) {
                 foreach ($order->items as $item) {
                     if ($item->product_id) {
                         Product::where('id', $item->product_id)
                             ->increment('stock_quantity', $item->quantity);
                     }
+                }
+
+                // Restore discount code quantity
+                if ($order->discount_code_id) {
+                    DiscountCode::where('id', $order->discount_code_id)->increment('quantity', 1);
                 }
             }
 

@@ -54,6 +54,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Banner
         $this->app->register(\App\Providers\Domain\BannerDomainProvider::class);
+
+        // Discount Code
+        $this->app->register(\App\Providers\Domain\DiscountCodeDomainProvider::class);
     }
 
     /**
