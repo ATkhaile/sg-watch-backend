@@ -51,6 +51,7 @@ class Order extends Model
         'cancelled_at',
         'cancel_reason',
         'discount_code_id',
+        'points_used',
     ];
 
     protected function casts(): array
@@ -61,6 +62,7 @@ class Order extends Model
             'cod_fee' => 'decimal:0',
             'deposit_amount' => 'decimal:0',
             'discount_amount' => 'decimal:0',
+            'points_used' => 'integer',
             'total_amount' => 'decimal:0',
             'confirmed_at' => 'datetime',
             'paid_at' => 'datetime',

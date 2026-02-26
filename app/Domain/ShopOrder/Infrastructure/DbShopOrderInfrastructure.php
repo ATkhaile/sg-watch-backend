@@ -42,7 +42,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         $address->load(['jpDetail', 'vnDetail']);
 
-        $currency = $data['currency'] ?? 'VND';
+        $currency = $data['currency'] ?? 'JPY';
 
         // Validate stock and calculate subtotal
         $subtotal = 0;
@@ -81,7 +81,21 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $discountAmount = (int) floor($subtotal * $discountCode->percentage / 100);
         }
 
-        $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount;
+        // Validate and apply points
+        $pointsUsed = 0;
+        if (!empty($data['use_points']) && $currency === 'JPY') {
+            $user = User::find($userId);
+            $requestedPoints = (int) $data['use_points'];
+
+            if ($requestedPoints > $user->point) {
+                return ['success' => false, 'message' => 'Insufficient points. Available: ' . $user->point];
+            }
+
+            $maxDeductible = $subtotal + $shippingFee + $codFee - $discountAmount;
+            $pointsUsed = min($requestedPoints, $maxDeductible);
+        }
+
+        $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount - $pointsUsed;
 
         $shippingInfo = $this->buildShippingInfo($address, $userId);
 
@@ -91,7 +105,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $receiptPath = $data['payment_receipt']->store('orders/receipts/' . $userId, 'public');
         }
 
-        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $discountCode, $totalAmount, $shippingInfo, $receiptPath) {
+        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $discountCode, $pointsUsed, $totalAmount, $shippingInfo, $receiptPath) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $userId,
@@ -105,6 +119,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'cod_fee' => $codFee,
                 'deposit_amount' => $depositAmount,
                 'discount_amount' => $discountAmount,
+                'points_used' => $pointsUsed,
                 'total_amount' => $totalAmount,
                 'currency' => $currency,
                 'coupon_code' => $discountCode?->code,
@@ -121,6 +136,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             // Decrement discount code quantity
             if ($discountCode) {
                 $discountCode->decrement('quantity', 1);
+            }
+
+            // Deduct points from user
+            if ($pointsUsed > 0) {
+                User::where('id', $userId)->decrement('point', $pointsUsed);
             }
 
             foreach ($cart->items as $item) {
@@ -236,6 +256,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             // Restore discount code quantity
             if ($order->discount_code_id) {
                 DiscountCode::where('id', $order->discount_code_id)->increment('quantity', 1);
+            }
+
+            // Restore points to user
+            if ($order->points_used > 0) {
+                User::where('id', $order->user_id)->increment('point', $order->points_used);
             }
 
             $order->update([
@@ -407,6 +432,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 if ($order->discount_code_id) {
                     DiscountCode::where('id', $order->discount_code_id)->increment('quantity', 1);
                 }
+
+                // Restore points to user
+                if ($order->points_used > 0) {
+                    User::where('id', $order->user_id)->increment('point', $order->points_used);
+                }
             }
 
             $order->update($updateData);
@@ -490,8 +520,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     private function calculateShippingFee(string $shippingMethod, string $currency): int
     {
         $fees = [
-            ShippingMethod::STANDARD => ['JPY' => 500, 'VND' => 30000],
-            ShippingMethod::EXPRESS => ['JPY' => 1200, 'VND' => 60000],
+            ShippingMethod::STANDARD => ['JPY' => 0, 'VND' => 0],
+            ShippingMethod::EXPRESS => ['JPY' => 0, 'VND' => 0],
             ShippingMethod::PICKUP => ['JPY' => 0, 'VND' => 0],
         ];
 
@@ -601,6 +631,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'cod_fee' => $order->cod_fee,
             'deposit_amount' => $order->deposit_amount,
             'discount_amount' => $order->discount_amount,
+            'points_used' => $order->points_used,
             'total_amount' => $order->total_amount,
             'currency' => $order->currency,
             'shipping_name' => $order->shipping_name,
