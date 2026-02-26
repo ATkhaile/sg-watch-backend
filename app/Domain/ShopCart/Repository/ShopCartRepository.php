@@ -7,5 +7,6 @@ interface ShopCartRepository
     public function getCart(?int $userId, ?string $deviceId): array;
     public function addItem(?int $userId, ?string $deviceId, int $productId, int $quantity, string $currency): array;
     public function updateItemQuantity(?int $userId, ?string $deviceId, int $cartItemId, int $quantity): array;
+    public function removeItem(?int $userId, ?string $deviceId, int $cartItemId): array;
     public function mergeCarts(string $deviceId, int $userId): void;
 }

@@ -24,4 +24,5 @@ Route::prefix('shop')->group(function () {
     Route::get('cart', \App\Http\Actions\Api\ShopCart\GetCartAction::class);
     Route::post('cart/items', \App\Http\Actions\Api\ShopCart\AddToCartAction::class);
     Route::put('cart/items/{itemId}', \App\Http\Actions\Api\ShopCart\UpdateCartItemAction::class);
+    Route::delete('cart/items/{itemId}', \App\Http\Actions\Api\ShopCart\RemoveCartItemAction::class);
 });

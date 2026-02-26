@@ -162,6 +162,30 @@ class DbShopCartInfrastructure implements ShopCartRepository
         ];
     }
 
+    public function removeItem(?int $userId, ?string $deviceId, int $cartItemId): array
+    {
+        $cart = $this->findCart($userId, $deviceId);
+
+        if (!$cart) {
+            return ['success' => false, 'message' => 'Cart not found.'];
+        }
+
+        $cartItem = CartItem::where('id', $cartItemId)
+            ->where('cart_id', $cart->id)
+            ->first();
+
+        if (!$cartItem) {
+            return ['success' => false, 'message' => 'Cart item not found.'];
+        }
+
+        $cartItem->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Cart item removed.',
+        ];
+    }
+
     public function mergeCarts(string $deviceId, int $userId): void
     {
         $guestCart = Cart::where('device_id', $deviceId)->whereNull('user_id')->first();
