@@ -61,7 +61,7 @@ class Product extends Model
 
     protected $appends = ['primary_image_url'];
 
-    private const JPY_TO_VND_RATE = 180;
+    private const JPY_TO_VND_RATE = 175;
 
     protected static function booted(): void
     {

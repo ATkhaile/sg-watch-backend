@@ -12,6 +12,7 @@ use App\Models\Shop\Cart;
 use App\Models\Shop\Order;
 use App\Models\Shop\OrderItem;
 use App\Models\Shop\Product;
+use App\Models\User;
 use App\Models\UserAddress;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -375,12 +376,38 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
             $order->update($updateData);
 
+            // Add points when order is completed
+            if ($status === OrderStatus::COMPLETED) {
+                $this->addPointsForCompletedOrder($order);
+            }
+
             return [
                 'success' => true,
                 'message' => 'Order status updated successfully.',
                 'order' => $this->formatOrder($order->fresh('items')),
             ];
         });
+    }
+
+    private function addPointsForCompletedOrder(Order $order): void
+    {
+        $totalAmount = (int) $order->total_amount;
+        $currency = $order->currency;
+
+        // Convert to JPY if needed
+        if ($currency !== 'JPY') {
+            return;
+        }
+
+        if ($totalAmount >= 100000) {
+            $points = 2000;
+        } elseif ($totalAmount >= 50000) {
+            $points = 1000;
+        } else {
+            $points = 500;
+        }
+
+        User::where('id', $order->user_id)->increment('point', $points);
     }
 
     private function buildShippingInfo(UserAddress $address, int $userId): array

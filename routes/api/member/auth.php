@@ -22,6 +22,7 @@ Route::get('pending-email-change', \App\Http\Actions\Api\Auth\GetPendingEmailCha
 Route::post('request-email-change', \App\Http\Actions\Api\Auth\RequestEmailChangeAction::class);
 Route::post('confirm-email-change', \App\Http\Actions\Api\Auth\ConfirmEmailChangeAction::class);
 Route::delete('withdraw', \App\Http\Actions\Api\Auth\WithdrawAction::class);
+Route::get('user-point', \App\Http\Actions\Api\Auth\GetUserPointAction::class);
 
 // FCM Token
 Route::post('fcm_token', \App\Http\Actions\Api\FcmToken\CreateFcmTokenAction::class);

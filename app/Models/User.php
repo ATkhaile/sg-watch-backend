@@ -48,6 +48,7 @@ class User extends Authenticatable implements JWTSubject, AuditableContract
         'invite_code',
         'inviter_id',
         'invited_at',
+        'point',
     ];
 
     protected $hidden = [
