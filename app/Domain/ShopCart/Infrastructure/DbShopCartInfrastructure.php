@@ -118,6 +118,50 @@ class DbShopCartInfrastructure implements ShopCartRepository
         ];
     }
 
+    public function updateItemQuantity(?int $userId, ?string $deviceId, int $cartItemId, int $quantity): array
+    {
+        $cart = $this->findCart($userId, $deviceId);
+
+        if (!$cart) {
+            return ['success' => false, 'message' => 'Cart not found.'];
+        }
+
+        $cartItem = CartItem::where('id', $cartItemId)
+            ->where('cart_id', $cart->id)
+            ->first();
+
+        if (!$cartItem) {
+            return ['success' => false, 'message' => 'Cart item not found.'];
+        }
+
+        $product = Product::where('id', $cartItem->product_id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$product) {
+            return ['success' => false, 'message' => 'Product not found or inactive.'];
+        }
+
+        if ($product->stock_quantity < $quantity) {
+            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $product->stock_quantity];
+        }
+
+        $cartItem->update(['quantity' => $quantity]);
+
+        return [
+            'success' => true,
+            'message' => 'Cart item quantity updated.',
+            'cart_item' => [
+                'id' => $cartItem->id,
+                'product_id' => $cartItem->product_id,
+                'quantity' => $cartItem->quantity,
+                'price_at_addition' => $cartItem->price_at_addition,
+                'currency' => $cartItem->currency,
+                'subtotal' => $cartItem->subtotal,
+            ],
+        ];
+    }
+
     public function mergeCarts(string $deviceId, int $userId): void
     {
         $guestCart = Cart::where('device_id', $deviceId)->whereNull('user_id')->first();

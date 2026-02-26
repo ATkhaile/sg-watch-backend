@@ -23,4 +23,5 @@ Route::prefix('shop')->group(function () {
     // Cart (guest + logged-in user)
     Route::get('cart', \App\Http\Actions\Api\ShopCart\GetCartAction::class);
     Route::post('cart/items', \App\Http\Actions\Api\ShopCart\AddToCartAction::class);
+    Route::put('cart/items/{itemId}', \App\Http\Actions\Api\ShopCart\UpdateCartItemAction::class);
 });
