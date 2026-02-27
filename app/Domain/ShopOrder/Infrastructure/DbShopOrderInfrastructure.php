@@ -277,6 +277,37 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         });
     }
 
+    public function updatePaymentReceipt(int $userId, int $orderId, \Illuminate\Http\UploadedFile $paymentReceipt): array
+    {
+        $order = Order::where('id', $orderId)
+            ->where('user_id', $userId)
+            ->with('items')
+            ->first();
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        $completedStatuses = [OrderStatus::COMPLETED, OrderStatus::CANCELLED, OrderStatus::REFUNDED];
+        if (in_array($order->status, $completedStatuses)) {
+            return ['success' => false, 'message' => 'Cannot update payment receipt for this order status.'];
+        }
+
+        // Delete old receipt
+        if ($order->payment_receipt && Storage::disk('public')->exists($order->payment_receipt)) {
+            Storage::disk('public')->delete($order->payment_receipt);
+        }
+
+        $path = $paymentReceipt->store('orders/receipts/' . $userId, 'public');
+        $order->update(['payment_receipt' => $path]);
+
+        return [
+            'success' => true,
+            'message' => 'Payment receipt updated successfully.',
+            'order' => $this->formatOrder($order->fresh('items')),
+        ];
+    }
+
     public function adminGetList(array $filters): array
     {
         $query = Order::query()

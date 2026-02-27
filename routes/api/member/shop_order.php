@@ -16,4 +16,5 @@ Route::prefix('shop/orders')->group(function () {
     Route::get('/', \App\Http\Actions\Api\ShopOrder\GetOrderListAction::class);
     Route::get('{id}', \App\Http\Actions\Api\ShopOrder\GetOrderDetailAction::class);
     Route::post('{id}/cancel', \App\Http\Actions\Api\ShopOrder\CancelOrderAction::class);
+    Route::post('{id}/payment-receipt', \App\Http\Actions\Api\ShopOrder\UpdatePaymentReceiptAction::class);
 });
