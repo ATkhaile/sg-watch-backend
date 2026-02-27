@@ -4,7 +4,9 @@ namespace App\Domain\ShopProduct\Infrastructure;
 
 use App\Components\CommonComponent;
 use App\Domain\ShopProduct\Repository\ShopProductRepository;
+use App\Enums\OrderStatus;
 use App\Models\Shop\Favorite;
+use App\Models\Shop\Order;
 use App\Models\Shop\Product;
 use App\Models\Shop\ProductImage;
 use Illuminate\Http\UploadedFile;
@@ -82,17 +84,28 @@ class DbShopProductInfrastructure implements ShopProductRepository
         $paginator = $query->paginate($perPage);
 
         $favoritedProductIds = [];
+        $purchasedProductIds = [];
         if ($userId) {
             $productIds = collect($paginator->items())->pluck('id');
             $favoritedProductIds = Favorite::where('user_id', $userId)
                 ->whereIn('product_id', $productIds)
                 ->pluck('product_id')
                 ->toArray();
+            $purchasedProductIds = Order::where('user_id', $userId)
+                ->whereIn('status', [OrderStatus::DELIVERED, OrderStatus::COMPLETED])
+                ->whereHas('items', fn ($q) => $q->whereIn('product_id', $productIds))
+                ->with(['items:id,order_id,product_id'])
+                ->get()
+                ->flatMap(fn ($order) => $order->items->pluck('product_id'))
+                ->unique()
+                ->values()
+                ->toArray();
         }
 
         return [
             'products' => $paginator->items(),
             'favorited_product_ids' => $favoritedProductIds,
+            'purchased_product_ids' => $purchasedProductIds,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -173,9 +186,14 @@ class DbShopProductInfrastructure implements ShopProductRepository
         }
 
         $isFavorited = false;
+        $isPurchased = false;
         if ($userId) {
             $isFavorited = Favorite::where('user_id', $userId)
                 ->where('product_id', $product->id)
+                ->exists();
+            $isPurchased = Order::where('user_id', $userId)
+                ->whereIn('status', [OrderStatus::DELIVERED, OrderStatus::COMPLETED])
+                ->whereHas('items', fn ($q) => $q->where('product_id', $product->id))
                 ->exists();
         }
 
@@ -206,6 +224,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'view_count' => $product->view_count,
             'sold_count' => $product->sold_count,
             'is_favorited' => $isFavorited,
+            'is_purchased' => $isPurchased,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
@@ -305,8 +324,20 @@ class DbShopProductInfrastructure implements ShopProductRepository
         $perPage = $filters['per_page'] ?? 15;
         $paginator = $query->paginate($perPage);
 
+        $productIds = collect($paginator->items())->pluck('id');
+        $purchasedProductIds = DB::table('shop_order_items')
+            ->join('shop_orders', 'shop_orders.id', '=', 'shop_order_items.order_id')
+            ->whereIn('shop_orders.status', [OrderStatus::DELIVERED, OrderStatus::COMPLETED])
+            ->whereIn('shop_order_items.product_id', $productIds)
+            ->distinct()
+            ->pluck('shop_order_items.product_id')
+            ->toArray();
+
         return [
-            'products' => collect($paginator->items())->map(fn ($product) => $this->formatProduct($product))->toArray(),
+            'products' => collect($paginator->items())->map(fn ($product) => array_merge(
+                $this->formatProduct($product),
+                ['is_purchased' => in_array($product->id, $purchasedProductIds)]
+            ))->toArray(),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -325,7 +356,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             return null;
         }
 
-        return $this->formatProduct($product);
+        $isPurchased = Order::whereIn('status', [OrderStatus::DELIVERED, OrderStatus::COMPLETED])
+            ->whereHas('items', fn ($q) => $q->where('product_id', $product->id))
+            ->exists();
+
+        return array_merge($this->formatProduct($product), ['is_purchased' => $isPurchased]);
     }
 
     public function create(array $data): array

@@ -10,12 +10,13 @@ class GetProductListActionResource extends JsonResource
     public function toArray($request): array
     {
         $favoritedProductIds = $this->resource['favorited_product_ids'] ?? [];
+        $purchasedProductIds = $this->resource['purchased_product_ids'] ?? [];
 
         return [
             'message' => 'Products retrieved successfully.',
             'status_code' => 200,
             'data' => [
-                'products' => collect($this->resource['products'])->map(function ($product) use ($favoritedProductIds) {
+                'products' => collect($this->resource['products'])->map(function ($product) use ($favoritedProductIds, $purchasedProductIds) {
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
@@ -37,6 +38,7 @@ class GetProductListActionResource extends JsonResource
                         'review_count' => $product->review_count,
                         'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
                         'is_favorited' => in_array($product->id, $favoritedProductIds),
+                        'is_purchased' => in_array($product->id, $purchasedProductIds),
                         'brand' => $product->brand ? [
                             'id' => $product->brand->id,
                             'name' => $product->brand->name,
