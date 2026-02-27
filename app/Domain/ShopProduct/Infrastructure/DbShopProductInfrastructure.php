@@ -484,7 +484,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             ] : null,
             'images' => $product->images->map(fn ($img) => [
                 'id' => $img->id,
-                'image_url' => $img->image_url,
+                'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
                 'alt_text' => $img->alt_text,
                 'is_primary' => $img->is_primary,
                 'sort_order' => $img->sort_order,
