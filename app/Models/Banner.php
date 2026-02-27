@@ -13,7 +13,8 @@ class Banner extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'image_url',
+        'media_url',
+        'media_type',
         'sort_order',
         'is_active',
     ];
@@ -26,13 +27,13 @@ class Banner extends Model
         ];
     }
 
-    protected $appends = ['image_full_url'];
+    protected $appends = ['media_full_url'];
 
-    public function getImageFullUrlAttribute(): ?string
+    public function getMediaFullUrlAttribute(): ?string
     {
-        if (!$this->image_url) {
+        if (!$this->media_url) {
             return null;
         }
-        return CommonComponent::getFullUrl($this->image_url);
+        return CommonComponent::getFullUrl($this->media_url);
     }
 }

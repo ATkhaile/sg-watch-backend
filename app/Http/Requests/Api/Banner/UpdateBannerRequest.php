@@ -14,7 +14,7 @@ class UpdateBannerRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:51200'],
+            'media' => ['nullable', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,webm', 'max:102400'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];

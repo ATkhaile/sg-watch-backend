@@ -24,8 +24,8 @@ class UpdateBannerAction extends BaseController
     public function __invoke(UpdateBannerRequest $request, int $id): UpdateBannerActionResource
     {
         $data = $request->validated();
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image');
+        if ($request->hasFile('media')) {
+            $data['media'] = $request->file('media');
         }
         $result = $this->useCase->__invoke($id, $data);
         return $this->responder->__invoke($result);

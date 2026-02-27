@@ -51,12 +51,13 @@ class DbBannerInfrastructure implements BannerRepository
 
     public function create(array $data): array
     {
-        $image = $data['image'] ?? null;
-        unset($data['image']);
+        $media = $data['media'] ?? null;
+        unset($data['media']);
 
-        if ($image instanceof UploadedFile) {
-            $path = $image->store('banners', 'public');
-            $data['image_url'] = $path;
+        if ($media instanceof UploadedFile) {
+            $path = $media->store('banners', 'public');
+            $data['media_url'] = $path;
+            $data['media_type'] = $this->detectMediaType($media);
         }
 
         $banner = Banner::create($data);
@@ -75,17 +76,20 @@ class DbBannerInfrastructure implements BannerRepository
             return ['success' => false, 'message' => 'Banner not found.'];
         }
 
-        $image = $data['image'] ?? null;
-        unset($data['image']);
+        $media = $data['media'] ?? null;
+        unset($data['media']);
 
         $banner->update($data);
 
-        if ($image instanceof UploadedFile) {
-            if ($banner->image_url && Storage::disk('public')->exists($banner->image_url)) {
-                Storage::disk('public')->delete($banner->image_url);
+        if ($media instanceof UploadedFile) {
+            if ($banner->media_url && Storage::disk('public')->exists($banner->media_url)) {
+                Storage::disk('public')->delete($banner->media_url);
             }
-            $path = $image->store('banners/' . $banner->id, 'public');
-            $banner->update(['image_url' => $path]);
+            $path = $media->store('banners/' . $banner->id, 'public');
+            $banner->update([
+                'media_url' => $path,
+                'media_type' => $this->detectMediaType($media),
+            ]);
         }
 
         return [
@@ -122,11 +126,21 @@ class DbBannerInfrastructure implements BannerRepository
     {
         return [
             'id' => $banner->id,
-            'image_url' => $banner->image_full_url,
+            'media_url' => $banner->media_full_url,
+            'media_type' => $banner->media_type,
             'sort_order' => $banner->sort_order,
             'is_active' => $banner->is_active,
             'created_at' => $banner->created_at?->toIso8601String(),
             'updated_at' => $banner->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function detectMediaType(UploadedFile $file): string
+    {
+        $mimeType = $file->getMimeType();
+        if (str_starts_with($mimeType, 'video/')) {
+            return 'video';
+        }
+        return 'image';
     }
 }
