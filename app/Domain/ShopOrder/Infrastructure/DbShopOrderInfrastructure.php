@@ -298,7 +298,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $query->where('payment_method', $filters['payment_method']);
         }
 
-        // Search by order_number or user name/email
+        // General keyword search (order_number, user name/email, product sku/name)
         if (!empty($filters['keyword'])) {
             $keyword = '%' . $filters['keyword'] . '%';
             $query->where(function ($q) use ($keyword) {
@@ -307,8 +307,44 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                       $uq->where('first_name', 'like', $keyword)
                         ->orWhere('last_name', 'like', $keyword)
                         ->orWhere('email', 'like', $keyword);
+                  })
+                  ->orWhereHas('items', function ($iq) use ($keyword) {
+                      $iq->where('product_sku', 'like', $keyword)
+                        ->orWhere('product_name', 'like', $keyword);
                   });
             });
+        }
+
+        // Search by order number
+        if (!empty($filters['order_number'])) {
+            $query->where('order_number', 'like', '%' . $filters['order_number'] . '%');
+        }
+
+        // Search by user name/email
+        if (!empty($filters['user_keyword'])) {
+            $userKeyword = '%' . $filters['user_keyword'] . '%';
+            $query->whereHas('user', function ($uq) use ($userKeyword) {
+                $uq->where('first_name', 'like', $userKeyword)
+                  ->orWhere('last_name', 'like', $userKeyword)
+                  ->orWhere('email', 'like', $userKeyword);
+            });
+        }
+
+        // Search by product sku/name
+        if (!empty($filters['product_keyword'])) {
+            $productKeyword = '%' . $filters['product_keyword'] . '%';
+            $query->whereHas('items', function ($iq) use ($productKeyword) {
+                $iq->where('product_sku', 'like', $productKeyword)
+                  ->orWhere('product_name', 'like', $productKeyword);
+            });
+        }
+
+        // Filter by date range
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
         // Sort
