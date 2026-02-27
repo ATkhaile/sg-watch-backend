@@ -35,6 +35,7 @@ class Product extends Model
         'condition',
         'attributes',
         'stock_quantity',
+        'stock_type',
         'warranty_months',
         'is_active',
         'is_featured',

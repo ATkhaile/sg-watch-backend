@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\ShopProduct;
 
+use App\Enums\StockType;
 use App\Http\Requests\Api\ApiFormRequest;
 
 class AdminGetProductListRequest extends ApiFormRequest
@@ -21,6 +22,7 @@ class AdminGetProductListRequest extends ApiFormRequest
             'movement_type' => ['nullable', 'string', 'in:quartz,automatic,manual,solar,kinetic'],
             'is_active' => ['nullable', 'boolean'],
             'in_stock' => ['nullable', 'boolean'],
+            'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
             'sort_by' => ['nullable', 'string', 'in:newest,price_asc,price_desc,name_asc,name_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],

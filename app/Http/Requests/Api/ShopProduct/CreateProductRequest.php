@@ -5,6 +5,7 @@ namespace App\Http\Requests\Api\ShopProduct;
 use App\Enums\MovementType;
 use App\Enums\ProductCondition;
 use App\Enums\ProductGender;
+use App\Enums\StockType;
 use App\Http\Requests\Api\ApiFormRequest;
 
 class CreateProductRequest extends ApiFormRequest
@@ -36,6 +37,7 @@ class CreateProductRequest extends ApiFormRequest
             'condition' => ['nullable', 'string', 'in:' . implode(',', ProductCondition::getValues())],
             'attributes' => ['nullable', 'array'],
             'stock_quantity' => ['nullable', 'integer', 'min:0'],
+            'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
             'warranty_months' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],

@@ -53,6 +53,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             }
         }
 
+        // Filter by stock type
+        if (!empty($filters['stock_type'])) {
+            $query->where('stock_type', $filters['stock_type']);
+        }
+
         // Filter by category
         if (!empty($filters['category_id'])) {
             $query->where('category_id', $filters['category_id']);
@@ -137,6 +142,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'movement_type' => $product->movement_type,
             'condition' => $product->condition,
             'stock_quantity' => $product->stock_quantity,
+            'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
@@ -192,6 +198,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'condition' => $product->condition,
             'attributes' => $product->attributes,
             'stock_quantity' => $product->stock_quantity,
+            'stock_type' => $product->stock_type,
             'warranty_months' => $product->warranty_months,
             'is_featured' => $product->is_featured,
             'average_rating' => $product->average_rating,
@@ -278,6 +285,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             } else {
                 $query->where('stock_quantity', '<=', 0);
             }
+        }
+
+        // Filter by stock type
+        if (!empty($filters['stock_type'])) {
+            $query->where('stock_type', $filters['stock_type']);
         }
 
         // Sorting
@@ -468,6 +480,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'condition' => $product->condition,
             'attributes' => $product->attributes,
             'stock_quantity' => $product->stock_quantity,
+            'stock_type' => $product->stock_type,
             'warranty_months' => $product->warranty_months,
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
