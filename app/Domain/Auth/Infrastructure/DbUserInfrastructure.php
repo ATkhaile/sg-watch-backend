@@ -7,7 +7,7 @@ use App\Domain\Auth\Repository\UserRepository;
 use App\Domain\Auth\Entity\{UserEntity, EmailVerificationEntity};
 use App\Models\{User, EmailVerification, EmailVerificationCode};
 use Carbon\Carbon;
-use Illuminate\Support\Facades\{Hash, DB};
+use Illuminate\Support\Facades\{Hash, DB, Log};
 use Illuminate\Support\Str;
 use App\Http\Controllers\BaseController;
 use App\Domain\Sessions\Entity\CreateSessionRequestEntity;
@@ -313,6 +313,10 @@ class DbUserInfrastructure extends BaseController implements UserRepository
                 return false;
             }
 
+            if (isset($data['birthday']) && is_string($data['birthday'])) {
+                $data['birthday'] = str_replace('/', '-', $data['birthday']);
+            }
+
             $user->fill($data);
             $result = $user->save();
 
@@ -325,6 +329,12 @@ class DbUserInfrastructure extends BaseController implements UserRepository
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('updateProfile failed', [
+                'userId' => $userId,
+                'data' => $data,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return false;
         }
     }
