@@ -311,7 +311,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     public function adminGetList(array $filters): array
     {
         $query = Order::query()
-            ->with(['items', 'user:id,first_name,last_name,email'])
+            ->with(['items', 'user:id,uuid,first_name,last_name,email'])
             ->orderByDesc('created_at');
 
         // Filter by status
@@ -391,7 +391,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $paginator = $query->paginate($perPage);
 
         return [
-            'orders' => collect($paginator->items())->map(fn (Order $order) => $this->formatAdminOrderSummary($order))->toArray(),
+            'orders' => collect($paginator->items())->map(fn (Order $order) => $this->formatAdminOrderDetail($order))->toArray(),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -410,18 +410,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return null;
         }
 
-        $data = $this->formatOrder($order);
-        $data['admin_note'] = $order->admin_note;
-        $data['user'] = $order->user ? [
-            'id' => $order->user->id,
-            'uuid' => $order->user->uuid,
-            'first_name' => $order->user->first_name,
-            'last_name' => $order->user->last_name,
-            'full_name' => $order->user->full_name,
-            'email' => $order->user->email,
-        ] : null;
-
-        return $data;
+        return $this->formatAdminOrderDetail($order);
     }
 
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array
@@ -741,27 +730,19 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         ];
     }
 
-    private function formatAdminOrderSummary(Order $order): array
+    private function formatAdminOrderDetail(Order $order): array
     {
-        return [
-            'id' => $order->id,
-            'order_number' => $order->order_number,
-            'status' => $order->status,
-            'payment_status' => $order->payment_status,
-            'payment_method' => $order->payment_method,
-            'payment_receipt' => $order->payment_receipt ? CommonComponent::getFullUrl($order->payment_receipt) : null,
-            'shipping_method' => $order->shipping_method,
-            'total_amount' => $order->total_amount,
-            'currency' => $order->currency,
-            'total_items' => $order->items->sum('quantity'),
-            'user' => $order->user ? [
-                'id' => $order->user->id,
-                'first_name' => $order->user->first_name,
-                'last_name' => $order->user->last_name,
-                'full_name' => $order->user->full_name,
-                'email' => $order->user->email,
-            ] : null,
-            'created_at' => $order->created_at?->toIso8601String(),
-        ];
+        $data = $this->formatOrder($order);
+        $data['admin_note'] = $order->admin_note;
+        $data['user'] = $order->user ? [
+            'id' => $order->user->id,
+            'uuid' => $order->user->uuid,
+            'first_name' => $order->user->first_name,
+            'last_name' => $order->user->last_name,
+            'full_name' => $order->user->full_name,
+            'email' => $order->user->email,
+        ] : null;
+
+        return $data;
     }
 }
