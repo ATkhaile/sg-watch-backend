@@ -401,22 +401,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return ['success' => false, 'message' => 'Order not found.'];
         }
 
-        $allowedTransitions = [
-            OrderStatus::PENDING => [OrderStatus::CONFIRMED, OrderStatus::CANCELLED],
-            OrderStatus::CONFIRMED => [OrderStatus::PROCESSING, OrderStatus::CANCELLED],
-            OrderStatus::PROCESSING => [OrderStatus::SHIPPING, OrderStatus::CANCELLED],
-            OrderStatus::SHIPPING => [OrderStatus::DELIVERED],
-            OrderStatus::DELIVERED => [OrderStatus::COMPLETED, OrderStatus::REFUNDED],
-            OrderStatus::COMPLETED => [OrderStatus::REFUNDED],
-        ];
-
-        $allowed = $allowedTransitions[$order->status] ?? [];
-
-        if (!in_array($status, $allowed)) {
-            return [
-                'success' => false,
-                'message' => "Cannot change status from \"{$order->status}\" to \"{$status}\".",
-            ];
+        if ($order->status === $status) {
+            return ['success' => false, 'message' => 'Order is already in this status.'];
         }
 
         return DB::transaction(function () use ($order, $status, $extra) {
@@ -453,6 +439,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             // Handle admin note
             if (isset($extra['admin_note'])) {
                 $updateData['admin_note'] = $extra['admin_note'];
+            }
+
+            // Deduct awarded points when moving away from completed
+            if ($order->status === OrderStatus::COMPLETED && $status !== OrderStatus::COMPLETED) {
+                if ($order->points_earned > 0) {
+                    User::where('id', $order->user_id)->decrement('point', $order->points_earned);
+                    $updateData['points_earned'] = 0;
+                }
             }
 
             // Restore stock and discount code on cancel
@@ -495,7 +489,6 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $totalAmount = (int) $order->total_amount;
         $currency = $order->currency;
 
-        // Convert to JPY if needed
         if ($currency !== 'JPY') {
             return;
         }
@@ -509,6 +502,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         }
 
         User::where('id', $order->user_id)->increment('point', $points);
+        $order->update(['points_earned' => $points]);
     }
 
     private function buildShippingInfo(UserAddress $address, int $userId): array
@@ -668,6 +662,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'deposit_amount' => $order->deposit_amount,
             'discount_amount' => $order->discount_amount,
             'points_used' => $order->points_used,
+            'points_earned' => $order->points_earned,
             'total_amount' => $order->total_amount,
             'currency' => $order->currency,
             'shipping_name' => $order->shipping_name,
