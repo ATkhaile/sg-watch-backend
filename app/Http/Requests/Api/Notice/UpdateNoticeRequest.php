@@ -16,6 +16,7 @@ class UpdateNoticeRequest extends ApiFormRequest
         return [
             'title' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
+            'image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,gif,webp', 'max:10240'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

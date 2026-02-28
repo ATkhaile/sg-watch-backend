@@ -5,6 +5,8 @@ namespace App\Domain\Notice\Infrastructure;
 use App\Domain\Notice\Repository\NoticeRepository;
 use App\Models\Notice;
 use App\Models\UserNotice;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 class DbNoticeInfrastructure implements NoticeRepository
 {
@@ -51,6 +53,14 @@ class DbNoticeInfrastructure implements NoticeRepository
 
     public function create(array $data): array
     {
+        $image = $data['image'] ?? null;
+        unset($data['image']);
+
+        if ($image instanceof UploadedFile) {
+            $path = $image->store('notices', 'public');
+            $data['image_url'] = $path;
+        }
+
         $notice = Notice::create($data);
 
         return [
@@ -67,7 +77,18 @@ class DbNoticeInfrastructure implements NoticeRepository
             return ['success' => false, 'message' => 'Notice not found.'];
         }
 
+        $image = $data['image'] ?? null;
+        unset($data['image']);
+
         $notice->update($data);
+
+        if ($image instanceof UploadedFile) {
+            if ($notice->image_url && Storage::disk('public')->exists($notice->image_url)) {
+                Storage::disk('public')->delete($notice->image_url);
+            }
+            $path = $image->store('notices/' . $notice->id, 'public');
+            $notice->update(['image_url' => $path]);
+        }
 
         return [
             'success' => true,
@@ -95,13 +116,14 @@ class DbNoticeInfrastructure implements NoticeRepository
 
         // Get active system notices
         $systemNotices = Notice::where('is_active', true)
-            ->select('id', 'title', 'content', 'created_at')
+            ->select('id', 'title', 'content', 'image_url', 'created_at')
             ->get()
             ->map(fn($notice) => [
                 'id' => 'system_' . $notice->id,
                 'type' => 'system',
                 'title' => $notice->title,
                 'content' => $notice->content,
+                'image_url' => $notice->image_full_url,
                 'data' => null,
                 'read_at' => null,
                 'created_at' => $notice->created_at?->toIso8601String(),
@@ -166,6 +188,7 @@ class DbNoticeInfrastructure implements NoticeRepository
             'id' => $notice->id,
             'title' => $notice->title,
             'content' => $notice->content,
+            'image_url' => $notice->image_full_url,
             'is_active' => $notice->is_active,
             'created_at' => $notice->created_at?->toIso8601String(),
             'updated_at' => $notice->updated_at?->toIso8601String(),
