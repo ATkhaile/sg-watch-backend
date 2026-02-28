@@ -24,7 +24,7 @@ Route::post('verify-login', \App\Http\Actions\Api\Auth\VerifyLoginAction::class)
 Route::post('forgot-password', \App\Http\Actions\Api\Auth\ForgotPasswordAction::class);
 Route::post('reset-password/{token}', \App\Http\Actions\Api\Auth\ResetPasswordAction::class);
 Route::post('register', \App\Http\Actions\Api\Auth\RegisterUserAction::class);
-Route::get('verify-registration/{token}', \App\Http\Actions\Api\Auth\VerifyRegistrationAction::class);
+Route::post('verify-registration', \App\Http\Actions\Api\Auth\VerifyRegistrationOtpAction::class);
 Route::get('check-reset-token/{token}', \App\Http\Actions\Api\Auth\CheckResetTokenAction::class);
 Route::post('web-session-auth', \App\Http\Actions\Api\Auth\SessionAppLoginAction::class);
 

@@ -8,7 +8,7 @@ use App\Enums\StatusCode;
 use App\Domain\Auth\Entity\RegisterUserRequestEntity;
 use App\Exceptions\Domain\ErrorResourceException;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\VerifyRegistration;
+use App\Mail\RegistrationOtp;
 use App\Mail\RegisterUser;
 use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -41,9 +41,7 @@ final class RegisterUserUseCase
     private function handleEmailVerification(RegisterUserRequestEntity $request): StatusEntity
     {
         try {
-            $token = Str::random(64);
-            $timeout = (int)config('auth.email_verification.timeout', 15);
-            $expiresAt = Carbon::now()->addMinutes($timeout);
+            $expiresInSeconds = (int) config('auth.registration_otp.expires_in', 200);
 
             $inviterId = null;
             $inviteCode = $request->getInviteCode();
@@ -52,13 +50,15 @@ final class RegisterUserUseCase
                 $inviterId = $inviter ? $inviter->getId() : null;
             }
 
+            // Save registration data
+            $token = Str::random(64);
             $verificationEntity = new EmailVerificationEntity(
                 email: $request->getEmail(),
                 firstName: $request->getFirstName(),
                 lastName: $request->getLastName(),
                 password: $request->getPassword(),
                 token: $token,
-                expiresAt: $expiresAt,
+                expiresAt: Carbon::now()->addSeconds($expiresInSeconds),
                 inviterId: $inviterId
             );
 
@@ -67,17 +67,18 @@ final class RegisterUserUseCase
                 throw new ErrorResourceException(message: __('auth.register.failed'));
             }
 
-            $baseVerifyUrl = env('BASE_FRONTEND_URL_VERIFY_REGISTRATION');
-            $verificationUrl = rtrim($baseVerifyUrl, '/') . '?token=' . $token;
+            // Generate and send OTP
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-            Mail::to($request->getEmail())->send(new VerifyRegistration([
-                'name' => $request->getFirstName() . ' ' . $request->getLastName(),
-                'verificationUrl' => $verificationUrl
-            ]));
+            $this->userRepository->invalidateRegistrationOtps($request->getEmail());
+            $this->userRepository->createRegistrationOtp($request->getEmail(), $code, $expiresInSeconds);
+
+            $name = $request->getFirstName() . ' ' . $request->getLastName();
+            Mail::to($request->getEmail())->send(new RegistrationOtp($code, $name));
 
             return new StatusEntity(
                 statusCode: StatusCode::OK,
-                message: __('auth.register.email_verification_sent'),
+                message: __('auth.register.otp_sent'),
             );
         } catch (\Throwable $th) {
             throw new ErrorResourceException(message: $th->getMessage());

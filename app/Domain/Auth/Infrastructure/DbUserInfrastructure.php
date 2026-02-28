@@ -498,4 +498,76 @@ class DbUserInfrastructure extends BaseController implements UserRepository
     {
         EmailVerificationCode::where('id', $otpId)->update(['is_used' => true]);
     }
+
+    // Registration OTP methods
+
+    public function invalidateRegistrationOtps(string $email): void
+    {
+        EmailVerificationCode::where('email', $email)
+            ->where('type', 'registration')
+            ->where('is_used', false)
+            ->update(['is_used' => true]);
+    }
+
+    public function createRegistrationOtp(string $email, string $code, int $expiresInSeconds): bool
+    {
+        try {
+            EmailVerificationCode::create([
+                'user_id' => '0',
+                'email' => $email,
+                'code' => $code,
+                'type' => 'registration',
+                'is_used' => false,
+                'attempts' => 0,
+                'expires_at' => Carbon::now()->addSeconds($expiresInSeconds),
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function findValidRegistrationOtp(string $email): ?array
+    {
+        $record = EmailVerificationCode::where('email', $email)
+            ->where('type', 'registration')
+            ->where('is_used', false)
+            ->where('expires_at', '>', Carbon::now())
+            ->latest()
+            ->first();
+
+        if (!$record) {
+            return null;
+        }
+
+        return [
+            'id' => $record->id,
+            'code' => $record->code,
+            'attempts' => $record->attempts,
+        ];
+    }
+
+    public function findEmailVerificationByEmail(string $email): ?EmailVerificationEntity
+    {
+        $model = EmailVerification::where('email', $email)
+            ->where('expires_at', '>', Carbon::now())
+            ->latest()
+            ->first();
+
+        if (!$model) {
+            return null;
+        }
+
+        return new EmailVerificationEntity(
+            email: $model->email,
+            firstName: $model->first_name,
+            lastName: $model->last_name,
+            password: $model->password,
+            token: $model->token,
+            expiresAt: $model->expires_at,
+            createdAt: $model->created_at,
+            updatedAt: $model->updated_at,
+            inviterId: $model->inviter_id
+        );
+    }
 }

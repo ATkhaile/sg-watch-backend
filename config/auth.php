@@ -141,4 +141,10 @@ return [
         'code_length' => 6,
         'reset_token_expires_in' => 10, // minutes
     ],
+
+    'registration_otp' => [
+        'expires_in' => (int)env('REGISTRATION_OTP_EXPIRE', 200), // seconds
+        'max_attempts' => 5,
+        'code_length' => 6,
+    ],
 ];

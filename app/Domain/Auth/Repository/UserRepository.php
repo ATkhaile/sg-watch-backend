@@ -31,4 +31,10 @@ interface UserRepository
     public function findValidPasswordOtp(string $email): ?array;
     public function incrementOtpAttempts(int $otpId): void;
     public function markOtpAsUsed(int $otpId): void;
+
+    // Registration OTP
+    public function invalidateRegistrationOtps(string $email): void;
+    public function createRegistrationOtp(string $email, string $code, int $expiresInSeconds): bool;
+    public function findValidRegistrationOtp(string $email): ?array;
+    public function findEmailVerificationByEmail(string $email): ?EmailVerificationEntity;
 }
