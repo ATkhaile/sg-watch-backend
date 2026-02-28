@@ -21,4 +21,6 @@ Route::group([
     require __DIR__ . '/system_admin/banner.php';
     require __DIR__ . '/system_admin/discount_code.php';
     require __DIR__ . '/system_admin/notice.php';
+    require __DIR__ . '/system_admin/shop_brand.php';
+    require __DIR__ . '/system_admin/shop_category.php';
 });

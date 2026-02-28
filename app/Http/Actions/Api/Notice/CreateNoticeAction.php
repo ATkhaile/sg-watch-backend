@@ -23,7 +23,11 @@ class CreateNoticeAction extends BaseController
 
     public function __invoke(CreateNoticeRequest $request): CreateNoticeActionResource
     {
-        $result = $this->useCase->__invoke($request->validated());
+        $data = $request->validated();
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image');
+        }
+        $result = $this->useCase->__invoke($data);
         return $this->responder->__invoke($result);
     }
 }

@@ -23,7 +23,11 @@ class UpdateNoticeAction extends BaseController
 
     public function __invoke(UpdateNoticeRequest $request, int $id): UpdateNoticeActionResource
     {
-        $result = $this->useCase->__invoke($id, $request->validated());
+        $data = $request->validated();
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image');
+        }
+        $result = $this->useCase->__invoke($id, $data);
         return $this->responder->__invoke($result);
     }
 }
