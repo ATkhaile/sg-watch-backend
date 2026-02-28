@@ -27,4 +27,5 @@ Route::group([
     require __DIR__ . '/member/shop_favorite.php';
     require __DIR__ . '/member/shop_order.php';
     require __DIR__ . '/member/shop_review.php';
+    require __DIR__ . '/member/notice.php';
 });

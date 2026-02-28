@@ -15,9 +15,15 @@ use App\Models\Shop\OrderItem;
 use App\Models\Shop\Product;
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Models\UserNotice;
+use App\Models\FcmToken;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 use Stripe\StripeClient;
 
 class DbShopOrderInfrastructure implements ShopOrderRepository
@@ -496,6 +502,28 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $this->addPointsForCompletedOrder($order);
             }
 
+            // Create user notice for order status change
+            $statusLabel = $this->getVietnameseStatusLabel($status);
+            $noticeTitle = "Đơn hàng #{$order->order_number} đã được cập nhật";
+            $noticeContent = "Đơn hàng của bạn đã chuyển sang trạng thái: {$statusLabel}";
+            $noticeData = [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'old_status' => $order->getOriginal('status'),
+                'new_status' => $status,
+            ];
+
+            UserNotice::create([
+                'user_id' => $order->user_id,
+                'type' => 'order_status',
+                'title' => $noticeTitle,
+                'content' => $noticeContent,
+                'data' => $noticeData,
+            ]);
+
+            // Send Firebase push notification
+            $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+
             return [
                 'success' => true,
                 'message' => 'Order status updated successfully.',
@@ -523,6 +551,69 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         User::where('id', $order->user_id)->increment('point', $points);
         $order->update(['points_earned' => $points]);
+    }
+
+    private function getVietnameseStatusLabel(string $status): string
+    {
+        return match ($status) {
+            OrderStatus::PENDING => 'Chờ xử lý',
+            OrderStatus::CONFIRMED => 'Đã xác nhận',
+            OrderStatus::PROCESSING => 'Đang xử lý',
+            OrderStatus::SHIPPING => 'Đang giao hàng',
+            OrderStatus::DELIVERED => 'Đã giao hàng',
+            OrderStatus::COMPLETED => 'Hoàn thành',
+            OrderStatus::CANCELLED => 'Đã hủy',
+            OrderStatus::REFUNDED => 'Đã hoàn tiền',
+            default => $status,
+        };
+    }
+
+    private function sendOrderStatusPush(int $userId, string $title, string $body, array $data): void
+    {
+        try {
+            $credentialsPath = base_path(config('services.firebase.credentials_path'));
+            if (!$credentialsPath || !file_exists($credentialsPath)) {
+                return;
+            }
+
+            $fcmTokens = FcmToken::where('user_id', $userId)
+                ->whereNull('deleted_at')
+                ->pluck('fcm_token')
+                ->toArray();
+
+            if (empty($fcmTokens)) {
+                return;
+            }
+
+            $messaging = (new Factory)
+                ->withServiceAccount($credentialsPath)
+                ->createMessaging();
+
+            $notification = Notification::create($title, $body);
+
+            $stringData = array_map('strval', $data);
+            $stringData['type'] = 'order_status';
+
+            foreach ($fcmTokens as $token) {
+                try {
+                    $message = CloudMessage::withTarget('token', $token)
+                        ->withNotification($notification)
+                        ->withData($stringData);
+
+                    $messaging->send($message);
+                } catch (\Throwable $e) {
+                    Log::channel('log_notification_push')->error('Firebase push failed for token', [
+                        'user_id' => $userId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::channel('log_notification_push')->error('Firebase push failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function buildShippingInfo(UserAddress $address, int $userId): array
