@@ -2,6 +2,7 @@
 
 namespace App\Models\Shop;
 
+use App\Components\CommonComponent;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -28,6 +29,16 @@ class Brand extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    protected $appends = ['logo_full_url'];
+
+    public function getLogoFullUrlAttribute(): ?string
+    {
+        if (!$this->logo_url) {
+            return null;
+        }
+        return CommonComponent::getFullUrl($this->logo_url);
     }
 
     public function products(): HasMany
