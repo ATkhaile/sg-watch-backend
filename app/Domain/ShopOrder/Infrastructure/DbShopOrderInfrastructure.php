@@ -532,6 +532,66 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         });
     }
 
+    public function adminUpdatePaymentStatus(int $orderId, string $paymentStatus): array
+    {
+        $order = Order::with('items')->find($orderId);
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        if ($order->payment_status === $paymentStatus) {
+            return ['success' => false, 'message' => 'Order already has this payment status.'];
+        }
+
+        $updateData = ['payment_status' => $paymentStatus];
+
+        if ($paymentStatus === PaymentStatus::PAID) {
+            $updateData['paid_at'] = now();
+        } elseif ($paymentStatus === PaymentStatus::PENDING) {
+            $updateData['paid_at'] = null;
+        }
+
+        $order->update($updateData);
+
+        // Create user notice for payment status change
+        $paymentLabel = $this->getVietnamesePaymentStatusLabel($paymentStatus);
+        $noticeTitle = "Đơn hàng #{$order->order_number} cập nhật thanh toán";
+        $noticeContent = "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}";
+        $noticeData = [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'payment_status' => $paymentStatus,
+        ];
+
+        UserNotice::create([
+            'user_id' => $order->user_id,
+            'type' => 'payment_status',
+            'title' => $noticeTitle,
+            'content' => $noticeContent,
+            'data' => $noticeData,
+        ]);
+
+        $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+
+        return [
+            'success' => true,
+            'message' => 'Payment status updated successfully.',
+            'order' => $this->formatOrder($order->fresh('items')),
+        ];
+    }
+
+    private function getVietnamesePaymentStatusLabel(string $paymentStatus): string
+    {
+        return match ($paymentStatus) {
+            PaymentStatus::PENDING => 'Chờ thanh toán',
+            PaymentStatus::PAID => 'Đã thanh toán',
+            PaymentStatus::FAILED => 'Thanh toán thất bại',
+            PaymentStatus::REFUNDED => 'Đã hoàn tiền',
+            default => $paymentStatus,
+        };
+    }
+
     private function addPointsForCompletedOrder(Order $order): void
     {
         $totalAmount = (int) $order->total_amount;

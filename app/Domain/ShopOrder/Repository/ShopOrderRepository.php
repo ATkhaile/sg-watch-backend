@@ -12,5 +12,6 @@ interface ShopOrderRepository
     public function adminGetList(array $filters): array;
     public function adminGetDetail(int $orderId): ?array;
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array;
+    public function adminUpdatePaymentStatus(int $orderId, string $paymentStatus): array;
     public function handleStripeWebhook(string $payload, string $signature): array;
 }
