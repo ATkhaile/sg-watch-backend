@@ -78,6 +78,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $discountCode = DiscountCode::where('code', $data['discount_code'])
                 ->where('is_active', true)
                 ->where('quantity', '>', 0)
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->first();
 
             if (!$discountCode) {

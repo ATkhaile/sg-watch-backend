@@ -94,6 +94,9 @@ class DbDiscountCodeInfrastructure implements DiscountCodeRepository
         $discountCode = DiscountCode::where('code', $code)
             ->where('is_active', true)
             ->where('quantity', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->first();
 
         if (!$discountCode) {
@@ -115,6 +118,7 @@ class DbDiscountCodeInfrastructure implements DiscountCodeRepository
             'quantity' => $discountCode->quantity,
             'percentage' => $discountCode->percentage,
             'is_active' => $discountCode->is_active,
+            'expires_at' => $discountCode->expires_at?->toIso8601String(),
             'created_at' => $discountCode->created_at?->toIso8601String(),
             'updated_at' => $discountCode->updated_at?->toIso8601String(),
         ];

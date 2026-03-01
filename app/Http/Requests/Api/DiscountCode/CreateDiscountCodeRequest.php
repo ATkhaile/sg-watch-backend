@@ -19,6 +19,7 @@ class CreateDiscountCodeRequest extends ApiFormRequest
             'quantity' => ['required', 'integer', 'min:0'],
             'percentage' => ['required', 'integer', 'min:1', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
+            'expires_at' => ['nullable', 'date'],
         ];
     }
 }

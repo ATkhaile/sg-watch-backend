@@ -16,6 +16,7 @@ class DiscountCode extends Model
         'quantity',
         'percentage',
         'is_active',
+        'expires_at',
     ];
 
     protected function casts(): array
@@ -24,6 +25,7 @@ class DiscountCode extends Model
             'quantity' => 'integer',
             'percentage' => 'integer',
             'is_active' => 'boolean',
+            'expires_at' => 'datetime',
         ];
     }
 }
