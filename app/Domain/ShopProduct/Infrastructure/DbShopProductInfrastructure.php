@@ -397,7 +397,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
 
         return DB::transaction(function () use ($product, $data) {
             $newImages = $data['images'] ?? null;
-            $existingImageIds = $data['existing_image_ids'] ?? null;
+            $existingImageIds = $data['existing_image_ids'] ?? [];
             unset($data['images'], $data['existing_image_ids']);
 
             if (isset($data['slug']) && empty($data['slug'])) {
