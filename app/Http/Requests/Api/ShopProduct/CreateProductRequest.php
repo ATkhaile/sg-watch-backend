@@ -31,6 +31,7 @@ class CreateProductRequest extends ApiFormRequest
             'price_vnd' => ['nullable', 'numeric', 'min:0'],
             'original_price_jpy' => ['nullable', 'numeric', 'min:0'],
             'original_price_vnd' => ['nullable', 'numeric', 'min:0'],
+            'cost_price_jpy' => ['nullable', 'numeric', 'min:0'],
             'points' => ['nullable', 'integer', 'min:0'],
             'gender' => ['nullable', 'string', 'in:' . implode(',', ProductGender::getValues())],
             'movement_type' => ['nullable', 'string', 'in:' . implode(',', MovementType::getValues())],

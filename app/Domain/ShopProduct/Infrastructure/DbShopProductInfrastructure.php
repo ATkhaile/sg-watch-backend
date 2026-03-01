@@ -509,6 +509,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'price_vnd' => $product->price_vnd,
             'original_price_jpy' => $product->original_price_jpy,
             'original_price_vnd' => $product->original_price_vnd,
+            'cost_price_jpy' => $product->cost_price_jpy,
             'points' => $product->points,
             'gender' => $product->gender,
             'movement_type' => $product->movement_type,
