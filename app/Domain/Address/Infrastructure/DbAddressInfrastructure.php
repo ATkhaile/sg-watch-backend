@@ -14,18 +14,35 @@ class DbAddressInfrastructure implements AddressRepository
 {
     public function getAllByUserId(int $userId): array
     {
-        return UserAddress::where('user_id', $userId)
+        $addresses = UserAddress::where('user_id', $userId)
+            ->with(['jpDetail.prefectureMaster', 'vnDetail'])
             ->orderByDesc('is_default')
             ->orderByDesc('created_at')
-            ->get(['id', 'label', 'country_code'])
-            ->toArray();
+            ->get();
+
+        return $addresses->map(function ($address) {
+            $item = [
+                'id' => $address->id,
+                'label' => $address->label,
+                'country_code' => $address->country_code,
+            ];
+
+            if ($address->country_code === 'JP' && $address->jpDetail && $address->jpDetail->prefectureMaster) {
+                $item['prefecture'] = [
+                    'prefecture_id' => $address->jpDetail->prefectureMaster->prefecture_id,
+                    'name' => $address->jpDetail->prefectureMaster->name,
+                ];
+            }
+
+            return $item;
+        })->toArray();
     }
 
     public function getById(int $addressId, int $userId): ?array
     {
         $address = UserAddress::where('id', $addressId)
             ->where('user_id', $userId)
-            ->with(['jpDetail', 'vnDetail'])
+            ->with(['jpDetail.prefectureMaster', 'vnDetail'])
             ->first();
 
         if (!$address) {
@@ -46,8 +63,10 @@ class DbAddressInfrastructure implements AddressRepository
 
         if ($address->country_code === 'JP' && $address->jpDetail) {
             $data['jp_detail'] = [
-                'prefecture' => $address->jpDetail->prefecture,
-                'city' => $address->jpDetail->city,
+                'prefecture' => $address->jpDetail->prefectureMaster ? [
+                    'prefecture_id' => $address->jpDetail->prefectureMaster->prefecture_id,
+                    'name' => $address->jpDetail->prefectureMaster->name,
+                ] : null,
                 'ward_town' => $address->jpDetail->ward_town,
                 'banchi' => $address->jpDetail->banchi,
                 'building_name' => $address->jpDetail->building_name,

@@ -46,7 +46,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return ['success' => false, 'message' => 'Address not found.'];
         }
 
-        $address->load(['jpDetail', 'vnDetail']);
+        $address->load(['jpDetail.prefectureMaster', 'vnDetail']);
 
         $currency = $data['currency'] ?? 'JPY';
 
@@ -67,7 +67,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $subtotal += $price * $item->quantity;
         }
 
-        $shippingFee = $this->calculateShippingFee($data['shipping_method'], $currency);
+        $shippingFee = $this->calculateShippingFee($data['shipping_method'], $currency, $address);
         $codFee = $this->calculateCodFee($data['payment_method'], $currency);
         $depositAmount = $this->calculateDepositAmount($data['payment_method'], $currency);
 
@@ -685,16 +685,16 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $city = '';
 
         if ($address->country_code === 'JP' && $detail) {
+            $prefectureName = $detail->prefectureMaster?->name ?? '';
             $parts = array_filter([
-                $detail->prefecture,
-                $detail->city,
+                $prefectureName,
                 $detail->ward_town,
                 $detail->banchi,
                 $detail->building_name,
                 $detail->room_no,
             ]);
             $fullAddress = implode(' ', $parts);
-            $city = $detail->city ?? $detail->prefecture ?? '';
+            $city = $prefectureName;
         } elseif ($address->country_code === 'VN' && $detail) {
             $parts = array_filter([
                 $detail->detail_address,
@@ -718,15 +718,26 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         ];
     }
 
-    private function calculateShippingFee(string $shippingMethod, string $currency): int
+    private function calculateShippingFee(string $shippingMethod, string $currency, UserAddress $address): int
     {
-        $fees = [
-            ShippingMethod::STANDARD => ['JPY' => 0, 'VND' => 0],
-            ShippingMethod::EXPRESS => ['JPY' => 0, 'VND' => 0],
-            ShippingMethod::PICKUP => ['JPY' => 0, 'VND' => 0],
-        ];
+        if ($shippingMethod === ShippingMethod::PICKUP) {
+            return 0;
+        }
 
-        return $fees[$shippingMethod][$currency] ?? 0;
+        // VN: 1,000 JPY = 175,000 VND
+        if ($address->country_code === 'VN') {
+            return $currency === 'JPY' ? 1000 : 175000;
+        }
+
+        // JP: Hokkaido / Okinawa = 1,500 JPY, others = 0 JPY
+        if ($address->country_code === 'JP' && $address->jpDetail) {
+            $prefectureName = $address->jpDetail->prefectureMaster?->name ?? '';
+            if (in_array($prefectureName, ['北海道', '沖縄県'])) {
+                return 1500;
+            }
+        }
+
+        return 0;
     }
 
     private function calculateCodFee(string $paymentMethod, string $currency): int

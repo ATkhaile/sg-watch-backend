@@ -15,8 +15,7 @@ class UserAddressJp extends Model
 
     protected $fillable = [
         'address_id',
-        'prefecture',
-        'city',
+        'prefecture_id',
         'ward_town',
         'banchi',
         'building_name',
@@ -26,5 +25,10 @@ class UserAddressJp extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(UserAddress::class, 'address_id');
+    }
+
+    public function prefectureMaster(): BelongsTo
+    {
+        return $this->belongsTo(Prefecture::class, 'prefecture_id');
     }
 }

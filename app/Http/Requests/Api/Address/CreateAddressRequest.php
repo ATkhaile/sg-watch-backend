@@ -38,8 +38,7 @@ class CreateAddressRequest extends ApiFormRequest
             $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['image'] = ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
             $rules['jp_detail'] = ['required', 'array'];
-            $rules['jp_detail.prefecture'] = ['required', 'string', 'max:50'];
-            $rules['jp_detail.city'] = ['required', 'string', 'max:100'];
+            $rules['jp_detail.prefecture_id'] = ['required', 'string', 'exists:prefectures,prefecture_id'];
             $rules['jp_detail.ward_town'] = ['required', 'string', 'max:100'];
             $rules['jp_detail.banchi'] = ['required', 'string', 'max:100'];
             $rules['jp_detail.building_name'] = ['nullable', 'string', 'max:150'];
