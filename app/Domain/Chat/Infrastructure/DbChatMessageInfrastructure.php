@@ -217,7 +217,9 @@ class DbChatMessageInfrastructure implements ChatMessageRepository
                     $mainQuery->where(function ($q) use ($search) {
                         $q->where('users.first_name', 'LIKE', "%{$search}%")
                           ->orWhere('users.last_name', 'LIKE', "%{$search}%")
-                          ->orWhere('users.email', 'LIKE', "%{$search}%");
+                          ->orWhere('users.email', 'LIKE', "%{$search}%")
+                          ->orWhereRaw("CONCAT(users.first_name, ' ', users.last_name) LIKE ?", ["%{$search}%"])
+                          ->orWhereRaw("CONCAT(users.last_name, ' ', users.first_name) LIKE ?", ["%{$search}%"]);
                     });
                 }
 
