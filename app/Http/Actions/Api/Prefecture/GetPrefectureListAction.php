@@ -4,13 +4,19 @@ namespace App\Http\Actions\Api\Prefecture;
 
 use App\Http\Controllers\BaseController;
 use App\Models\Prefecture;
+use Illuminate\Http\Request;
 
 class GetPrefectureListAction extends BaseController
 {
-    public function __invoke()
+    public function __invoke(Request $request)
     {
-        $prefectures = Prefecture::orderBy('order_num')
-            ->get(['prefecture_id', 'name']);
+        $query = Prefecture::orderBy('order_num');
+
+        if ($name = $request->query('name')) {
+            $query->where('name', 'like', '%' . $name . '%');
+        }
+
+        $prefectures = $query->get(['prefecture_id', 'name']);
 
         return response()->json([
             'message' => 'success',
