@@ -14,4 +14,5 @@ interface ShopProductRepository
     public function delete(int $id): array;
     public function updateFeaturedProducts(array $productIds): array;
     public function getFeaturedProducts(): array;
+    public function updateProductSortOrder(array $products): array;
 }

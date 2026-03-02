@@ -314,6 +314,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         match ($sortBy) {
+            'sort_order' => $query->orderBy('display_order', 'asc'),
             'price_asc' => $query->orderBy('price_jpy', 'asc'),
             'price_desc' => $query->orderBy('price_jpy', 'desc'),
             'name_asc' => $query->orderBy('name', 'asc'),
@@ -462,6 +463,19 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function updateProductSortOrder(array $products): array
+    {
+        return DB::transaction(function () use ($products) {
+            foreach ($products as $item) {
+                Product::where('id', $item['id'])->update(['display_order' => $item['sort_order']]);
+            }
+
+            return [
+                'message' => 'Product sort order updated successfully.',
+            ];
+        });
+    }
+
     public function updateFeaturedProducts(array $productIds): array
     {
         return DB::transaction(function () use ($productIds) {
@@ -588,6 +602,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'sort_order' => $product->sort_order,
+            'display_order' => $product->display_order,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,

@@ -41,6 +41,7 @@ class Product extends Model
         'is_active',
         'is_featured',
         'sort_order',
+        'display_order',
         'average_rating',
         'review_count',
         'view_count',
