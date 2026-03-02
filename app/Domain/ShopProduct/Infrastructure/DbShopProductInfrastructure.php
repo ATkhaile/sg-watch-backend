@@ -462,6 +462,73 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function updateFeaturedProducts(array $productIds): array
+    {
+        return DB::transaction(function () use ($productIds) {
+            // Clear all featured flags
+            Product::where('is_featured', true)->update(['is_featured' => false, 'sort_order' => 0]);
+
+            // Set featured + sort_order for selected products
+            foreach ($productIds as $index => $id) {
+                Product::where('id', $id)->update(['is_featured' => true, 'sort_order' => $index + 1]);
+            }
+
+            // Return updated featured list
+            $products = Product::whereIn('id', $productIds)
+                ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+                ->orderBy('sort_order')
+                ->get();
+
+            return [
+                'message' => 'Featured products updated successfully.',
+                'products' => $products->map(fn ($product) => $this->formatProduct($product))->toArray(),
+            ];
+        });
+    }
+
+    public function getFeaturedProducts(): array
+    {
+        $products = Product::where('is_featured', true)
+            ->where('is_active', true)
+            ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+            ->orderBy('sort_order')
+            ->limit(8)
+            ->get();
+
+        return $products->map(fn ($product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'sku' => $product->sku,
+            'short_description' => $product->short_description,
+            'price_jpy' => $product->price_jpy,
+            'price_vnd' => $product->price_vnd,
+            'original_price_jpy' => $product->original_price_jpy,
+            'original_price_vnd' => $product->original_price_vnd,
+            'points' => $product->points,
+            'gender' => $product->gender,
+            'movement_type' => $product->movement_type,
+            'condition' => $product->condition,
+            'stock_quantity' => $product->stock_quantity,
+            'stock_type' => $product->stock_type,
+            'is_featured' => $product->is_featured,
+            'average_rating' => $product->average_rating,
+            'review_count' => $product->review_count,
+            'sold_count' => $product->sold_count,
+            'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
+            'brand' => $product->brand ? [
+                'id' => $product->brand->id,
+                'name' => $product->brand->name,
+                'slug' => $product->brand->slug,
+            ] : null,
+            'category' => $product->category ? [
+                'id' => $product->category->id,
+                'name' => $product->category->name,
+                'slug' => $product->category->slug,
+            ] : null,
+        ])->toArray();
+    }
+
     private function syncImages(Product $product, array $images): void
     {
         foreach ($images as $index => $image) {
