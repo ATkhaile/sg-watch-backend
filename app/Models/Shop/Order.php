@@ -91,15 +91,16 @@ class Order extends Model
 
     public static function generateOrderNumber(): string
     {
-        $date = now()->format('Ymd');
-        $lastOrder = static::whereDate('created_at', today())
-            ->orderByDesc('id')
+        $prefix = 'SG' . now()->format('ym');
+
+        $lastOrder = static::where('order_number', 'like', $prefix . '%')
+            ->orderByDesc('order_number')
             ->first();
 
         $sequence = $lastOrder
-            ? (int) substr($lastOrder->order_number, -4) + 1
+            ? (int) substr($lastOrder->order_number, 6) + 1
             : 1;
 
-        return sprintf('SO-%s-%04d', $date, $sequence);
+        return sprintf('%s%04d', $prefix, $sequence);
     }
 }
