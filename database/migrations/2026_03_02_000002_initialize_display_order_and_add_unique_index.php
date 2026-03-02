@@ -9,8 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Set display_order = id for all existing products
-        DB::table('shop_products')->whereNull('deleted_at')->update([
+        // Set display_order = id for all products (including soft-deleted)
+        DB::table('shop_products')->update([
             'display_order' => DB::raw('id'),
         ]);
 
