@@ -144,6 +144,27 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         ];
     }
 
+    public function getById(int $userId, int $reviewId): ?array
+    {
+        $review = Review::where('id', $reviewId)
+            ->where('user_id', $userId)
+            ->with(['user:id,first_name,last_name', 'product:id,name,slug'])
+            ->first();
+
+        if (!$review) {
+            return null;
+        }
+
+        $data = $this->formatReview($review);
+        $data['product'] = $review->product ? [
+            'id' => $review->product->id,
+            'name' => $review->product->name,
+            'slug' => $review->product->slug,
+        ] : null;
+
+        return $data;
+    }
+
     public function getByProduct(int $productId, int $perPage): array
     {
         $paginator = Review::where('product_id', $productId)
@@ -215,6 +236,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
             'rating' => $review->rating,
             'title' => $review->title,
             'comment' => $review->comment,
+            'image_base_url' => rtrim(Storage::disk('public')->url(''), '/') . '/',
             'image_urls' => $review->image_urls,
             'is_approved' => $review->is_approved,
             'user' => $review->user ? [
