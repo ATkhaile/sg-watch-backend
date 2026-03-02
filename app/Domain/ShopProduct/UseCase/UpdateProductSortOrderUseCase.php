@@ -13,8 +13,8 @@ final class UpdateProductSortOrderUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(array $products): array
+    public function __invoke(int $productId, int $newDisplayOrder): array
     {
-        return $this->repository->updateProductSortOrder($products);
+        return $this->repository->updateProductSortOrder($productId, $newDisplayOrder);
     }
 }

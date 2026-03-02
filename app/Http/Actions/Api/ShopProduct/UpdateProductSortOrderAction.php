@@ -23,7 +23,8 @@ class UpdateProductSortOrderAction extends BaseController
 
     public function __invoke(UpdateProductSortOrderRequest $request): UpdateProductSortOrderActionResource
     {
-        $result = $this->useCase->__invoke($request->validated()['products']);
+        $validated = $request->validated();
+        $result = $this->useCase->__invoke($validated['id'], $validated['display_order']);
 
         return $this->responder->__invoke($result);
     }

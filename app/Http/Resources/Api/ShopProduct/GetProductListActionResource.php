@@ -34,6 +34,7 @@ class GetProductListActionResource extends JsonResource
                         'stock_quantity' => $product->stock_quantity,
                         'stock_type' => $product->stock_type,
                         'is_featured' => $product->is_featured,
+                        'display_order' => $product->display_order,
                         'average_rating' => $product->average_rating,
                         'review_count' => $product->review_count,
                         'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,

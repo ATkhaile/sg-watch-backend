@@ -14,9 +14,8 @@ class UpdateProductSortOrderRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'products' => ['required', 'array', 'min:1'],
-            'products.*.id' => ['required', 'integer', 'exists:shop_products,id'],
-            'products.*.sort_order' => ['required', 'integer', 'min:0'],
+            'id' => ['required', 'integer', 'exists:shop_products,id'],
+            'display_order' => ['required', 'integer', 'min:1'],
         ];
     }
 }

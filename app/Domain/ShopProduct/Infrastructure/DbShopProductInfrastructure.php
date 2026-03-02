@@ -68,6 +68,9 @@ class DbShopProductInfrastructure implements ShopProductRepository
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         switch ($sortBy) {
+            case 'display_order':
+                $query->orderBy('display_order', 'asc');
+                break;
             case 'price_asc':
                 $query->orderBy('price_jpy', 'asc');
                 break;
@@ -157,6 +160,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_quantity' => $product->stock_quantity,
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
+            'display_order' => $product->display_order,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
@@ -463,12 +467,22 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
-    public function updateProductSortOrder(array $products): array
+    public function updateProductSortOrder(int $productId, int $newDisplayOrder): array
     {
-        return DB::transaction(function () use ($products) {
-            foreach ($products as $item) {
-                Product::where('id', $item['id'])->update(['display_order' => $item['sort_order']]);
+        return DB::transaction(function () use ($productId, $newDisplayOrder) {
+            $product = Product::findOrFail($productId);
+            $oldDisplayOrder = $product->display_order;
+
+            // Find the product currently at the target position
+            $targetProduct = Product::where('display_order', $newDisplayOrder)->first();
+
+            if ($targetProduct) {
+                // Use temporary value to avoid unique constraint violation
+                $product->update(['display_order' => 0]);
+                $targetProduct->update(['display_order' => $oldDisplayOrder]);
             }
+
+            $product->update(['display_order' => $newDisplayOrder]);
 
             return [
                 'message' => 'Product sort order updated successfully.',
@@ -526,6 +540,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_quantity' => $product->stock_quantity,
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
+            'display_order' => $product->display_order,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
