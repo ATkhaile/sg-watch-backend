@@ -465,6 +465,10 @@ class DbUserInfrastructure extends BaseController implements UserRepository
             ]);
             return true;
         } catch (\Exception $e) {
+            Log::error('createPasswordOtp failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }

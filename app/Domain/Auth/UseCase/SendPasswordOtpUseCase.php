@@ -39,12 +39,20 @@ final class SendPasswordOtpUseCase
 
             // Lưu OTP vào DB
             $expiresIn = config('auth.password_otp.expires_in', 200);
-            $this->user->createPasswordOtp(
+            $saved = $this->user->createPasswordOtp(
                 $userEntity->getId(),
                 $requestEntity->getEmail(),
                 $code,
                 $expiresIn
             );
+
+            if (!$saved) {
+                Log::error('Failed to save password OTP to database', ['email' => $requestEntity->getEmail()]);
+                return new StatusEntity(
+                    statusCode: StatusCode::INTERNAL_ERR,
+                    message: __('auth.password_otp.send_failed'),
+                );
+            }
 
             // Gửi email chứa OTP
             Mail::to($requestEntity->getEmail())->send(
