@@ -37,7 +37,7 @@ final class GetMessagesBetweenUsersUseCase
                 'reply_to_message_id' => $msg->reply_to_message_id,
                 'message' => $msg->message,
                 'message_type' => $msg->message_type,
-                'file_url' => $msg->file_url,
+                'file_url' => $msg->file_url ? CommonComponent::getFullUrl($msg->file_url) : null,
                 'file_name' => $msg->file_name,
                 'file_type' => $msg->file_type,
                 'file_size' => $msg->file_size,
