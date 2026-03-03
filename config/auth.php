@@ -131,7 +131,7 @@ return [
     ],
 
     'email_verification' => [
-        'enabled' => env('ENABLE_EMAIL_VERIFICATION', false),
+        'enabled' => env('ENABLE_EMAIL_VERIFICATION', true),
         'timeout' => (int)env('EMAIL_VERIFICATION_TIMEOUT', 15), // minutes
     ],
 
