@@ -22,7 +22,7 @@ class DbChatMessageInfrastructure implements ChatMessageRepository
         if ($file) {
             $path = $file->store('chat_files', 'public');
             if ($path) {
-                $data['file_url'] = '/storage/' . $path;
+                $data['file_url'] = $path;
                 $data['file_name'] = $file->getClientOriginalName();
                 $data['file_type'] = $file->getClientMimeType();
                 $data['file_size'] = $file->getSize();
