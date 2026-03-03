@@ -21,7 +21,7 @@ final class UserInfoUseCase
         }
 
         return new UserInfoEntity(
-            id: (string)$user->id,
+            id: $user->id,
             firstName: $user->first_name ?? '',
             lastName: $user->last_name ?? '',
             avatarUrl: $avatarUrl,

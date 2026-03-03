@@ -5,7 +5,7 @@ namespace App\Domain\Auth\Entity;
 class UserInfoEntity implements \JsonSerializable
 {
     public function __construct(
-        private string $id,
+        private int $id,
         private string $firstName,
         private string $lastName,
         private ?string $avatarUrl = null,
@@ -39,7 +39,7 @@ class UserInfoEntity implements \JsonSerializable
         return $result;
     }
 
-    public function getId(): string
+    public function getId(): int
     {
         return $this->id;
     }
