@@ -248,7 +248,7 @@ class DbChatMessageInfrastructure implements ChatMessageRepository
                 ->where('is_read', false)
                 ->count();
 
-            $avatarUrl = \App\Components\CommonComponent::getFullUrl($user->avatar_url);
+            $avatarUrl = $user->avatar_url ? \App\Components\CommonComponent::getFullUrl($user->avatar_url) : null;
 
             return [
                 'type' => 'user',
