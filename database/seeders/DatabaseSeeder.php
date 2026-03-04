@@ -28,5 +28,8 @@ class DatabaseSeeder extends Seeder
 
         // 6. Shop: brands, categories, products mẫu
         $this->call(\Database\Seeders\Shop\ShopSeeder::class);
+
+        // 7. Pusher & Firebase settings
+        $this->call(\Database\Seeders\ElcCore\PusherInfoSeeder::class);
     }
 }

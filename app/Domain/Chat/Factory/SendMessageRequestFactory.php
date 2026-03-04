@@ -13,8 +13,6 @@ class SendMessageRequestFactory
             'receiver_id' => (int)$request->input('receiver_id'),
             'message' => $request->input('message'),
             'is_read' => false,
-            'created_at' => now(),
-            'updated_at' => now(),
         ];
 
         // Add reply_to_message_id if present

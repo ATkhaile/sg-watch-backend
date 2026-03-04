@@ -9,6 +9,7 @@ use App\Http\Resources\Api\Chat\ActionResource;
 use App\Http\Responders\Api\Chat\ActionResponder as ChatActionResponder;
 use App\Domain\Chat\UseCase\SendPusherMessageUseCase;
 use App\Domain\Chat\UseCase\SendChatFirebaseNotificationUseCase;
+use App\Components\CommonComponent;
 
 class ChatMessageAction
 {
@@ -23,7 +24,6 @@ class ChatMessageAction
     public function __invoke(SendMessageRequest $request): ActionResource
     {
         $params = $this->factory->createFromRequest($request);
-        $mode = env('CHAT_MODE', 'normal');
 
         $chatMessage = $this->sendMessageUseCase->execute($params, $request);
 
@@ -38,11 +38,11 @@ class ChatMessageAction
         // Get sender and receiver names and avatars
         $senderName = $messageWithRelations?->user?->full_name ?? 'Unknown';
         $senderAvatar = $messageWithRelations?->user?->avatar_url
-            ? \App\Components\CommonComponent::getFullUrl($messageWithRelations->user->avatar_url)
+            ? CommonComponent::getFullUrl($messageWithRelations->user->avatar_url)
             : '';
         $receiverName = $messageWithRelations?->receiver?->full_name ?? 'Unknown';
         $receiverAvatar = $messageWithRelations?->receiver?->avatar_url
-            ? \App\Components\CommonComponent::getFullUrl($messageWithRelations->receiver->avatar_url)
+            ? CommonComponent::getFullUrl($messageWithRelations->receiver->avatar_url)
             : '';
 
         $replyData = null;
@@ -57,29 +57,40 @@ class ChatMessageAction
             ];
         }
 
+        $fileUrl = $messageWithRelations?->file_url
+            ? CommonComponent::getFullUrl($messageWithRelations->file_url)
+            : null;
+
         $responseData = [
-            'id' => $chatMessage->getId(),
-            'message' => $chatMessage->getMessage(),
-            'user_id' => $chatMessage->getUserId(),
+            'id' => $messageWithRelations->id,
+            'user_id' => $messageWithRelations->user_id,
             'sender_name' => $senderName,
             'sender_avatar' => $senderAvatar,
-            'receiver_id' => $chatMessage->getReceiverId(),
+            'user_name' => $senderName,
+            'user_avatar' => $senderAvatar,
+            'receiver_id' => $messageWithRelations->receiver_id,
             'receiver_name' => $receiverName,
             'receiver_avatar' => $receiverAvatar,
-            'message_type' => $chatMessage->getMessageType(),
-            'created_at' => $chatMessage->getCreatedAt(),
-            'file_url' => $chatMessage->getFileUrl(),
-            'file_name' => $chatMessage->getFileName(),
-            'file_type' => $chatMessage->getFileType(),
-            'file_size' => $chatMessage->getFileSize(),
+            'reply_to_message_id' => $messageWithRelations->reply_to_message_id,
+            'message' => $messageWithRelations->message,
+            'message_type' => $messageWithRelations->message_type,
+            'file_url' => $fileUrl,
+            'file_name' => $messageWithRelations->file_name,
+            'file_type' => $messageWithRelations->file_type,
+            'file_size' => $messageWithRelations->file_size,
+            'is_read' => false,
+            'read_at' => null,
+            'created_at' => $messageWithRelations->created_at,
+            'updated_at' => $messageWithRelations->updated_at,
             'chat_type' => 'direct',
-            'reply_to_message_id' => $messageWithRelations ? $messageWithRelations->reply_to_message_id : null,
             'reply_to_message' => $replyData,
+            'mentions' => [],
         ];
 
-        // Always send Pusher event for realtime updates (regardless of mode)
+        // Send Pusher event for realtime updates
         $this->sendPusherMessageUseCase->execute($responseData);
 
+        // Send Firebase push notification
         $this->sendChatFirebaseNotificationUseCase->execute(
             $responseData,
             'direct',
@@ -95,15 +106,6 @@ class ChatMessageAction
             'status_code' => 200,
             'message' => __('chat.create.success'),
             'data' => $data
-        ]);
-    }
-
-    private function createErrorResponse(): ActionResource
-    {
-        return ($this->responder)([
-            'status_code' => 400,
-            'message' => __('chat.invalid.success'),
-            'data' => null
         ]);
     }
 }
