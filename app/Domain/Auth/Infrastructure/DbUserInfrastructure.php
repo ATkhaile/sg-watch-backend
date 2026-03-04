@@ -212,8 +212,7 @@ class DbUserInfrastructure extends BaseController implements UserRepository
         try {
             return DB::table('email_verifications')->insert([
                 'email' => $entity->getEmail(),
-                'first_name' => $entity->getFirstName(),
-                'last_name' => $entity->getLastName(),
+                'name' => trim($entity->getFirstName() . ' ' . $entity->getLastName()),
                 'inviter_id' => $entity->getInviterId(),
                 'password' => Hash::make($entity->getPassword()),
                 'token' => $entity->getToken(),
@@ -236,10 +235,14 @@ class DbUserInfrastructure extends BaseController implements UserRepository
             return null;
         }
 
+        $nameParts = explode(' ', $model->name ?? '', 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+
         return new EmailVerificationEntity(
             email: $model->email,
-            firstName: $model->first_name,
-            lastName: $model->last_name,
+            firstName: $firstName,
+            lastName: $lastName,
             password: $model->password,
             token: $model->token,
             expiresAt: $model->expires_at,
@@ -562,10 +565,14 @@ class DbUserInfrastructure extends BaseController implements UserRepository
             return null;
         }
 
+        $nameParts = explode(' ', $model->name ?? '', 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+
         return new EmailVerificationEntity(
             email: $model->email,
-            firstName: $model->first_name,
-            lastName: $model->last_name,
+            firstName: $firstName,
+            lastName: $lastName,
             password: $model->password,
             token: $model->token,
             expiresAt: $model->expires_at,
