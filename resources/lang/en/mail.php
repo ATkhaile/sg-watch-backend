@@ -17,4 +17,7 @@ return [
     'passwordResetOtp' => [
         'title' => 'Password Reset Verification Code',
     ],
+    'registrationOtp' => [
+        'title' => 'Registration Verification Code',
+    ],
 ];

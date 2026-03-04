@@ -17,4 +17,7 @@ return [
     'passwordResetOtp' => [
         'title' => 'パスワードリセット認証コード',
     ],
+    'registrationOtp' => [
+        'title' => '登録認証コード',
+    ],
 ];
