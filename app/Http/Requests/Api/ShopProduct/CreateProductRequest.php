@@ -42,6 +42,7 @@ class CreateProductRequest extends ApiFormRequest
             'warranty_months' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
+            'is_domestic' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
             'images' => ['nullable', 'array'],
             'images.*' => ['sometimes', 'file', 'image', 'max:5120'],

@@ -21,9 +21,10 @@ class AdminGetProductListRequest extends ApiFormRequest
             'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
             'movement_type' => ['nullable', 'string', 'in:quartz,automatic,manual,solar,kinetic'],
             'is_active' => ['nullable', 'boolean'],
+            'is_domestic' => ['nullable', 'boolean'],
             'in_stock' => ['nullable', 'boolean'],
             'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
-            'sort_by' => ['nullable', 'string', 'in:newest,sort_order,price_asc,price_desc,name_asc,name_desc'],
+            'sort_by' => ['nullable', 'string', 'in:newest,display_order,price_asc,price_desc,name_asc,name_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ];

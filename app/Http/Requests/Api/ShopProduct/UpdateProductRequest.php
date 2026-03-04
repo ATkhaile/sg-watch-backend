@@ -44,6 +44,7 @@ class UpdateProductRequest extends ApiFormRequest
             'warranty_months' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
+            'is_domestic' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
             'existing_image_ids' => ['nullable', 'array'],
             'existing_image_ids.*' => ['integer'],

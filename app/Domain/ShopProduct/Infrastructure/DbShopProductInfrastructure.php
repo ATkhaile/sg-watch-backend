@@ -65,6 +65,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $query->where('category_id', $filters['category_id']);
         }
 
+        // Filter by is_domestic
+        if (isset($filters['is_domestic'])) {
+            $query->where('is_domestic', $filters['is_domestic']);
+        }
+
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         switch ($sortBy) {
@@ -160,6 +165,8 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_quantity' => $product->stock_quantity,
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
+            'is_domestic' => $product->is_domestic,
+            'sale_percent' => $product->sale_percent,
             'display_order' => $product->display_order,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
@@ -223,6 +230,8 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_type' => $product->stock_type,
             'warranty_months' => $product->warranty_months,
             'is_featured' => $product->is_featured,
+            'is_domestic' => $product->is_domestic,
+            'sale_percent' => $product->sale_percent,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'view_count' => $product->view_count,
@@ -301,6 +310,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $query->where('is_active', $filters['is_active']);
         }
 
+        // Filter by is_domestic
+        if (isset($filters['is_domestic'])) {
+            $query->where('is_domestic', $filters['is_domestic']);
+        }
+
         // Filter by in stock
         if (isset($filters['in_stock'])) {
             if ($filters['in_stock']) {
@@ -318,7 +332,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         match ($sortBy) {
-            'sort_order' => $query->orderBy('display_order', 'asc'),
+            'display_order' => $query->orderBy('display_order', 'asc'),
             'price_asc' => $query->orderBy('price_jpy', 'asc'),
             'price_desc' => $query->orderBy('price_jpy', 'desc'),
             'name_asc' => $query->orderBy('name', 'asc'),
@@ -540,6 +554,8 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_quantity' => $product->stock_quantity,
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
+            'is_domestic' => $product->is_domestic,
+            'sale_percent' => $product->sale_percent,
             'display_order' => $product->display_order,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
@@ -616,6 +632,8 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'warranty_months' => $product->warranty_months,
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
+            'is_domestic' => $product->is_domestic,
+            'sale_percent' => $product->sale_percent,
             'sort_order' => $product->sort_order,
             'display_order' => $product->display_order,
             'brand' => $product->brand ? [

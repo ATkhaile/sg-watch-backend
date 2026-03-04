@@ -40,6 +40,8 @@ class Product extends Model
         'warranty_months',
         'is_active',
         'is_featured',
+        'is_domestic',
+        'sale_percent',
         'sort_order',
         'display_order',
         'average_rating',
@@ -60,6 +62,7 @@ class Product extends Model
             'attributes' => 'array',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
+            'is_domestic' => 'boolean',
         ];
     }
 
@@ -69,6 +72,12 @@ class Product extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Product $product) {
+            if (!$product->display_order) {
+                $product->display_order = (Product::max('display_order') ?? 0) + 1;
+            }
+        });
+
         static::saving(function (Product $product) {
             if ($product->isDirty('price_jpy')) {
                 $product->price_vnd = $product->price_jpy * self::JPY_TO_VND_RATE;
@@ -76,6 +85,13 @@ class Product extends Model
             if ($product->isDirty('original_price_jpy')) {
                 $product->original_price_vnd = $product->original_price_jpy
                     ? $product->original_price_jpy * self::JPY_TO_VND_RATE
+                    : null;
+            }
+            if ($product->isDirty('price_jpy') || $product->isDirty('original_price_jpy')) {
+                $original = $product->original_price_jpy;
+                $selling = $product->price_jpy;
+                $product->sale_percent = ($original && $selling && $original > 0)
+                    ? (int) round((($original - $selling) / $original) * 100)
                     : null;
             }
         });
