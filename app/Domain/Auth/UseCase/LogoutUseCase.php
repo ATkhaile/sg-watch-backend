@@ -23,21 +23,21 @@ final class LogoutUseCase
         $tokenString = (string) $token;
         $tokenHash = hash('sha256', $tokenString);
 
+        $userId = auth()->id();
+
+        // Xóa FCM token TRƯỚC khi invalidate JWT
+        if ($fcmToken && $userId) {
+            FcmToken::where('fcm_token', $fcmToken)
+                ->where('user_id', $userId)
+                ->delete();
+        }
+
         Session::where('token_hash', $tokenHash)
             ->where('is_active', true)
             ->update(['is_active' => false]);
 
         JWTAuth::parseToken()->invalidate(true);
         \Session::flush();
-         if ($fcmToken) {
-            $userId = auth()->id();
-
-            if ($userId) {
-                FcmToken::where('fcm_token', $fcmToken)
-                    ->where('user_id', $userId)
-                    ->delete();
-            }
-        }
         return new AuthEntity(
             message: __('auth.logout.success'),
         );
