@@ -185,7 +185,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $stripeClientSecret = $stripeResult['client_secret'];
             }
 
-            $order->load('items');
+            $order->load('items.product.category', 'items.product.brand');
 
             $response = [
                 'success' => true,
@@ -205,7 +205,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     public function getList(int $userId, ?string $status, int $perPage): array
     {
         $query = Order::where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->orderByDesc('created_at');
 
         if ($status) {
@@ -229,7 +229,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     {
         $order = Order::where('id', $orderId)
             ->where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->first();
 
         if (!$order) {
@@ -281,7 +281,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return [
                 'success' => true,
                 'message' => 'Order cancelled successfully.',
-                'order' => $this->formatOrder($order->fresh('items')),
+                'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
             ];
         });
     }
@@ -290,7 +290,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     {
         $order = Order::where('id', $orderId)
             ->where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->first();
 
         if (!$order) {
@@ -313,14 +313,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'success' => true,
             'message' => 'Payment receipt updated successfully.',
-            'order' => $this->formatOrder($order->fresh('items')),
+            'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
         ];
     }
 
     public function adminGetList(array $filters): array
     {
         $query = Order::query()
-            ->with(['items', 'user:id,uuid,first_name,last_name,email'])
+            ->with(['items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email'])
             ->orderByDesc('created_at');
 
         // Filter by status
@@ -336,6 +336,24 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         // Filter by payment_method
         if (!empty($filters['payment_method'])) {
             $query->where('payment_method', $filters['payment_method']);
+        }
+
+        // Filter by brand_id (through order items -> product)
+        if (!empty($filters['brand_id'])) {
+            $query->whereHas('items', function ($iq) use ($filters) {
+                $iq->whereHas('product', function ($pq) use ($filters) {
+                    $pq->where('brand_id', $filters['brand_id']);
+                });
+            });
+        }
+
+        // Filter by category_id (through order items -> product)
+        if (!empty($filters['category_id'])) {
+            $query->whereHas('items', function ($iq) use ($filters) {
+                $iq->whereHas('product', function ($pq) use ($filters) {
+                    $pq->where('category_id', $filters['category_id']);
+                });
+            });
         }
 
         // General keyword search (order_number, user name/email, product sku/name)
@@ -424,7 +442,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array
     {
-        $order = Order::with('items')->find($orderId);
+        $order = Order::with(['items.product.category', 'items.product.brand'])->find($orderId);
 
         if (!$order) {
             return ['success' => false, 'message' => 'Order not found.'];
@@ -530,14 +548,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return [
                 'success' => true,
                 'message' => 'Order status updated successfully.',
-                'order' => $this->formatOrder($order->fresh('items')),
+                'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
             ];
         });
     }
 
     public function adminUpdatePaymentStatus(int $orderId, string $paymentStatus): array
     {
-        $order = Order::with('items')->find($orderId);
+        $order = Order::with(['items.product.category', 'items.product.brand'])->find($orderId);
 
         if (!$order) {
             return ['success' => false, 'message' => 'Order not found.'];
@@ -580,7 +598,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'success' => true,
             'message' => 'Payment status updated successfully.',
-            'order' => $this->formatOrder($order->fresh('items')),
+            'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
         ];
     }
 
@@ -875,6 +893,16 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'total_price' => $item->total_price,
+                'category' => $item->product?->category ? [
+                    'id' => $item->product->category->id,
+                    'name' => $item->product->category->name,
+                    'slug' => $item->product->category->slug,
+                ] : null,
+                'brand' => $item->product?->brand ? [
+                    'id' => $item->product->brand->id,
+                    'name' => $item->product->brand->name,
+                    'slug' => $item->product->brand->slug,
+                ] : null,
             ])->toArray(),
         ];
     }
