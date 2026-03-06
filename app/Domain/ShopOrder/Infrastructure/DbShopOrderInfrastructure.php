@@ -320,8 +320,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     public function adminGetList(array $filters): array
     {
         $query = Order::query()
-            ->with(['items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email'])
-            ->orderByDesc('created_at');
+            ->with(['items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email']);
 
         // Filter by status
         if (!empty($filters['status'])) {
