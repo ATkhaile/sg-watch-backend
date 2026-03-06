@@ -16,7 +16,7 @@ class GetProductListRequest extends ApiFormRequest
     {
         return [
             'keyword' => ['nullable', 'string', 'max:255'],
-            'gender' => ['nullable', 'string', 'in:male,female,unisex'],
+            'gender' => ['nullable', 'string', 'in:male,female,unisex,couple'],
             'brand_id' => ['nullable', 'integer', 'exists:shop_brands,id'],
             'movement_type' => ['nullable', 'string', 'in:quartz,automatic,manual,solar,kinetic'],
             'in_stock' => ['nullable', 'boolean'],

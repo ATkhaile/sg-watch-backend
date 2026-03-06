@@ -11,4 +11,5 @@ final class ProductGender extends Enum
     public const MALE = 'male';
     public const FEMALE = 'female';
     public const UNISEX = 'unisex';
+    public const COUPLE = 'couple';
 }

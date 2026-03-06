@@ -185,7 +185,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $stripeClientSecret = $stripeResult['client_secret'];
             }
 
-            $order->load('items');
+            $order->load('items.product.category', 'items.product.brand');
 
             $response = [
                 'success' => true,
@@ -205,7 +205,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     public function getList(int $userId, ?string $status, int $perPage): array
     {
         $query = Order::where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->orderByDesc('created_at');
 
         if ($status) {
@@ -229,7 +229,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     {
         $order = Order::where('id', $orderId)
             ->where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->first();
 
         if (!$order) {
@@ -281,7 +281,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return [
                 'success' => true,
                 'message' => 'Order cancelled successfully.',
-                'order' => $this->formatOrder($order->fresh('items')),
+                'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
             ];
         });
     }
@@ -290,7 +290,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     {
         $order = Order::where('id', $orderId)
             ->where('user_id', $userId)
-            ->with('items')
+            ->with(['items.product.category', 'items.product.brand'])
             ->first();
 
         if (!$order) {
@@ -313,15 +313,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'success' => true,
             'message' => 'Payment receipt updated successfully.',
-            'order' => $this->formatOrder($order->fresh('items')),
+            'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
         ];
     }
 
     public function adminGetList(array $filters): array
     {
         $query = Order::query()
-            ->with(['items', 'user:id,uuid,first_name,last_name,email'])
-            ->orderByDesc('created_at');
+            ->with(['items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email']);
 
         // Filter by status
         if (!empty($filters['status'])) {
@@ -336,6 +335,24 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         // Filter by payment_method
         if (!empty($filters['payment_method'])) {
             $query->where('payment_method', $filters['payment_method']);
+        }
+
+        // Filter by brand_id (through order items -> product)
+        if (!empty($filters['brand_id'])) {
+            $query->whereHas('items', function ($iq) use ($filters) {
+                $iq->whereHas('product', function ($pq) use ($filters) {
+                    $pq->where('brand_id', $filters['brand_id']);
+                });
+            });
+        }
+
+        // Filter by category_id (through order items -> product)
+        if (!empty($filters['category_id'])) {
+            $query->whereHas('items', function ($iq) use ($filters) {
+                $iq->whereHas('product', function ($pq) use ($filters) {
+                    $pq->where('category_id', $filters['category_id']);
+                });
+            });
         }
 
         // General keyword search (order_number, user name/email, product sku/name)
@@ -424,7 +441,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
     public function adminUpdateStatus(int $orderId, string $status, array $extra = []): array
     {
-        $order = Order::with('items')->find($orderId);
+        $order = Order::with(['items.product.category', 'items.product.brand'])->find($orderId);
 
         if (!$order) {
             return ['success' => false, 'message' => 'Order not found.'];
@@ -530,14 +547,270 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return [
                 'success' => true,
                 'message' => 'Order status updated successfully.',
-                'order' => $this->formatOrder($order->fresh('items')),
+                'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
             ];
         });
     }
 
+    public function adminCreateOrder(array $data): array
+    {
+        $userId = $data['user_id'];
+        $user = User::find($userId);
+
+        if (!$user) {
+            return ['success' => false, 'message' => 'User not found.'];
+        }
+
+        $currency = $data['currency'];
+        $items = $data['items'];
+
+        // Validate products and calculate subtotal
+        $orderItems = [];
+        $subtotal = 0;
+
+        foreach ($items as $item) {
+            $product = Product::find($item['product_id']);
+
+            if (!$product || !$product->is_active) {
+                return ['success' => false, 'message' => "Product ID {$item['product_id']} is not available."];
+            }
+
+            if ($product->stock_quantity < $item['quantity']) {
+                return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\". Available: {$product->stock_quantity}"];
+            }
+
+            $unitPrice = isset($item['unit_price'])
+                ? (int) $item['unit_price']
+                : ($currency === 'JPY' ? (int) $product->price_jpy : (int) $product->price_vnd);
+
+            $totalPrice = $unitPrice * $item['quantity'];
+            $subtotal += $totalPrice;
+
+            $orderItems[] = [
+                'product' => $product,
+                'quantity' => $item['quantity'],
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
+            ];
+        }
+
+        $shippingFee = (int) ($data['shipping_fee'] ?? 0);
+        $codFee = (int) ($data['cod_fee'] ?? 0);
+        $depositAmount = (int) ($data['deposit_amount'] ?? 0);
+        $discountAmount = (int) ($data['discount_amount'] ?? 0);
+        $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount;
+
+        $status = $data['status'] ?? OrderStatus::PENDING;
+        $paymentStatus = $data['payment_status'] ?? PaymentStatus::PENDING;
+
+        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $totalAmount, $status, $paymentStatus) {
+            $order = Order::create([
+                'order_number' => Order::generateOrderNumber(),
+                'user_id' => $userId,
+                'status' => $status,
+                'payment_status' => $paymentStatus,
+                'payment_method' => $data['payment_method'],
+                'shipping_method' => $data['shipping_method'],
+                'subtotal' => $subtotal,
+                'shipping_fee' => $shippingFee,
+                'cod_fee' => $codFee,
+                'deposit_amount' => $depositAmount,
+                'discount_amount' => $discountAmount,
+                'total_amount' => $totalAmount,
+                'currency' => $currency,
+                'shipping_name' => $data['shipping_name'],
+                'shipping_phone' => $data['shipping_phone'] ?? null,
+                'shipping_email' => $data['shipping_email'] ?? null,
+                'shipping_address' => $data['shipping_address'],
+                'shipping_city' => $data['shipping_city'] ?? null,
+                'shipping_country' => $data['shipping_country'] ?? null,
+                'shipping_postal_code' => $data['shipping_postal_code'] ?? null,
+                'note' => $data['note'] ?? null,
+                'admin_note' => $data['admin_note'] ?? null,
+                'confirmed_at' => $status === OrderStatus::CONFIRMED ? now() : null,
+                'paid_at' => $paymentStatus === PaymentStatus::PAID ? now() : null,
+            ]);
+
+            foreach ($orderItems as $item) {
+                $product = $item['product'];
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_sku' => $product->sku,
+                    'product_image' => $product->primary_image_url,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total_price' => $item['total_price'],
+                ]);
+
+                Product::where('id', $product->id)
+                    ->decrement('stock_quantity', $item['quantity']);
+            }
+
+            $order->load('items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email');
+
+            return [
+                'success' => true,
+                'message' => 'Order created successfully.',
+                'order' => $this->formatAdminOrderDetail($order),
+            ];
+        });
+    }
+
+    public function adminUpdateOrder(int $orderId, array $data): array
+    {
+        $order = Order::with(['items.product'])->find($orderId);
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        $completedStatuses = [OrderStatus::COMPLETED, OrderStatus::CANCELLED, OrderStatus::REFUNDED];
+        if (in_array($order->status, $completedStatuses)) {
+            return ['success' => false, 'message' => 'Cannot update order in current status.'];
+        }
+
+        $currency = $data['currency'] ?? $order->currency;
+
+        try {
+            return DB::transaction(function () use ($order, $data, $currency) {
+                $subtotal = (int) $order->subtotal;
+
+                // Update items if provided
+                if (isset($data['items'])) {
+                    $newItems = $data['items'];
+
+                    // Validate new products
+                    $orderItems = [];
+                    foreach ($newItems as $item) {
+                        $product = Product::find($item['product_id']);
+
+                        if (!$product || !$product->is_active) {
+                            throw new \RuntimeException("Product ID {$item['product_id']} is not available.");
+                        }
+
+                        $orderItems[] = [
+                            'product' => $product,
+                            'quantity' => $item['quantity'],
+                            'unit_price' => isset($item['unit_price'])
+                                ? (int) $item['unit_price']
+                                : ($currency === 'JPY' ? (int) $product->price_jpy : (int) $product->price_vnd),
+                        ];
+                    }
+
+                    // Restore old stock
+                    foreach ($order->items as $oldItem) {
+                        if ($oldItem->product_id) {
+                            Product::where('id', $oldItem->product_id)
+                                ->increment('stock_quantity', $oldItem->quantity);
+                        }
+                    }
+
+                    // Check stock for new items
+                    foreach ($orderItems as $item) {
+                        $product = $item['product']->fresh();
+                        if ($product->stock_quantity < $item['quantity']) {
+                            throw new \RuntimeException("Insufficient stock for \"{$product->name}\". Available: {$product->stock_quantity}");
+                        }
+                    }
+
+                    // Delete old items and create new ones
+                    $order->items()->delete();
+
+                    $subtotal = 0;
+                    foreach ($orderItems as $item) {
+                        $product = $item['product'];
+                        $totalPrice = $item['unit_price'] * $item['quantity'];
+                        $subtotal += $totalPrice;
+
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $product->id,
+                            'product_name' => $product->name,
+                            'product_sku' => $product->sku,
+                            'product_image' => $product->primary_image_url,
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'total_price' => $totalPrice,
+                        ]);
+
+                        Product::where('id', $product->id)
+                            ->decrement('stock_quantity', $item['quantity']);
+                    }
+                }
+
+                $updateData = [];
+
+                if (isset($data['currency'])) {
+                    $updateData['currency'] = $data['currency'];
+                }
+                if (isset($data['payment_method'])) {
+                    $updateData['payment_method'] = $data['payment_method'];
+                }
+                if (isset($data['shipping_method'])) {
+                    $updateData['shipping_method'] = $data['shipping_method'];
+                }
+                if (isset($data['shipping_name'])) {
+                    $updateData['shipping_name'] = $data['shipping_name'];
+                }
+                if (isset($data['shipping_phone'])) {
+                    $updateData['shipping_phone'] = $data['shipping_phone'];
+                }
+                if (isset($data['shipping_email'])) {
+                    $updateData['shipping_email'] = $data['shipping_email'];
+                }
+                if (isset($data['shipping_address'])) {
+                    $updateData['shipping_address'] = $data['shipping_address'];
+                }
+                if (isset($data['shipping_city'])) {
+                    $updateData['shipping_city'] = $data['shipping_city'];
+                }
+                if (isset($data['shipping_country'])) {
+                    $updateData['shipping_country'] = $data['shipping_country'];
+                }
+                if (isset($data['shipping_postal_code'])) {
+                    $updateData['shipping_postal_code'] = $data['shipping_postal_code'];
+                }
+                if (array_key_exists('note', $data)) {
+                    $updateData['note'] = $data['note'];
+                }
+                if (array_key_exists('admin_note', $data)) {
+                    $updateData['admin_note'] = $data['admin_note'];
+                }
+
+                // Recalculate totals
+                $shippingFee = isset($data['shipping_fee']) ? (int) $data['shipping_fee'] : (int) $order->shipping_fee;
+                $codFee = isset($data['cod_fee']) ? (int) $data['cod_fee'] : (int) $order->cod_fee;
+                $depositAmount = isset($data['deposit_amount']) ? (int) $data['deposit_amount'] : (int) $order->deposit_amount;
+                $discountAmount = isset($data['discount_amount']) ? (int) $data['discount_amount'] : (int) $order->discount_amount;
+
+                $updateData['subtotal'] = $subtotal;
+                $updateData['shipping_fee'] = $shippingFee;
+                $updateData['cod_fee'] = $codFee;
+                $updateData['deposit_amount'] = $depositAmount;
+                $updateData['discount_amount'] = $discountAmount;
+                $updateData['total_amount'] = $subtotal + $shippingFee + $codFee - $discountAmount;
+
+                $order->update($updateData);
+
+                $order->load('items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email');
+
+                return [
+                    'success' => true,
+                    'message' => 'Order updated successfully.',
+                    'order' => $this->formatAdminOrderDetail($order),
+                ];
+            });
+        } catch (\RuntimeException $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     public function adminUpdatePaymentStatus(int $orderId, string $paymentStatus): array
     {
-        $order = Order::with('items')->find($orderId);
+        $order = Order::with(['items.product.category', 'items.product.brand'])->find($orderId);
 
         if (!$order) {
             return ['success' => false, 'message' => 'Order not found.'];
@@ -580,7 +853,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'success' => true,
             'message' => 'Payment status updated successfully.',
-            'order' => $this->formatOrder($order->fresh('items')),
+            'order' => $this->formatOrder($order->fresh(['items.product.category', 'items.product.brand'])),
         ];
     }
 
@@ -875,6 +1148,16 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'total_price' => $item->total_price,
+                'category' => $item->product?->category ? [
+                    'id' => $item->product->category->id,
+                    'name' => $item->product->category->name,
+                    'slug' => $item->product->category->slug,
+                ] : null,
+                'brand' => $item->product?->brand ? [
+                    'id' => $item->product->brand->id,
+                    'name' => $item->product->brand->name,
+                    'slug' => $item->product->brand->slug,
+                ] : null,
             ])->toArray(),
         ];
     }
