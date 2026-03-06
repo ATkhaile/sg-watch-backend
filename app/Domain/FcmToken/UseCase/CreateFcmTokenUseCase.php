@@ -6,13 +6,9 @@ use App\Domain\FcmToken\Entity\CreateFcmTokenRequestEntity;
 use App\Domain\FcmToken\Entity\StatusEntity;
 use App\Domain\FcmToken\Repository\FcmTokenRepository;
 use App\Enums\StatusCode;
-use App\Domain\Shared\Concerns\RequiresPermission;
 
 final class CreateFcmTokenUseCase
 {
-    use RequiresPermission;
-
-    public const PERMISSION = 'list-fcm-tokens';
     public function __construct(
         private FcmTokenRepository $fcmTokenRepository
     ) {
@@ -20,7 +16,6 @@ final class CreateFcmTokenUseCase
 
     public function __invoke(CreateFcmTokenRequestEntity $requestEntity): StatusEntity
     {
-        $this->authorize();
 
         if ($this->fcmTokenRepository->store($requestEntity)) {
             return new StatusEntity(
