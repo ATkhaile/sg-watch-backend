@@ -19,8 +19,3 @@ use Illuminate\Support\Facades\Route;
 
 // Shop Order Stripe Webhook
 Route::post('shop/stripe/webhook', \App\Http\Actions\Api\ShopOrder\StripeWebhookAction::class);
-
-// Debug route (remove after testing)
-Route::get('ppp', function () {
-    dd(config('services.stripe.webhook_secret'));
-});
