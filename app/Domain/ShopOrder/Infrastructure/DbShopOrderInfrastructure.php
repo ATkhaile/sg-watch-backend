@@ -1068,6 +1068,12 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
     public function handleStripeWebhook(string $payload, string $signature): array
     {
+        Log::info('Stripe Webhook received', [
+            'signature' => $signature,
+            'webhook_secret' => config('services.stripe.webhook_secret'),
+            'payload_length' => strlen($payload),
+        ]);
+
         try {
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
@@ -1075,6 +1081,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 config('services.stripe.webhook_secret')
             );
         } catch (\Throwable $e) {
+            Log::error('Stripe Webhook signature verification failed', [
+                'error' => $e->getMessage(),
+            ]);
             return ['success' => false, 'message' => 'Webhook signature verification failed.'];
         }
 
