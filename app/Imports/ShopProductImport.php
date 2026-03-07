@@ -25,10 +25,14 @@ class ShopProductImport implements ToModel, WithHeadingRow
 
   public function model(array $row)
   {
-    // 1: Nếu Product Code (SKU) đã tồn tại trong hệ thống thì Bỏ qua (Skip)
+    // Nếu SKU đã tồn tại trong hệ thống thì bỏ qua (Skip)
     $sku = $row['ma_san_pham'] ?? null;
-    if (!$sku || Product::where('sku', $sku)->exists()) {
+    if ($sku && Product::where('sku', $sku)->exists()) {
       return null;
+    }
+    // Nếu không có SKU thì tự sinh mã ngẫu nhiên
+    if (!$sku) {
+      $sku = 'SKU-' . strtoupper(Str::random(8));
     }
 
 
