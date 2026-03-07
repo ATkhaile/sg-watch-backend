@@ -36,6 +36,7 @@ class GetProductListActionResource extends JsonResource
                         'is_featured' => $product->is_featured,
                         'is_domestic' => $product->is_domestic,
                         'sale_percent' => $product->sale_percent,
+                        'attributes' => $product->attributes,
                         'display_order' => $product->display_order,
                         'average_rating' => $product->average_rating,
                         'review_count' => $product->review_count,

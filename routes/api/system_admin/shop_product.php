@@ -19,6 +19,7 @@ Route::prefix('shop/products')->group(function () {
     Route::get('{id}', \App\Http\Actions\Api\ShopProduct\AdminGetProductDetailAction::class);
     Route::post('/', \App\Http\Actions\Api\ShopProduct\CreateProductAction::class);
     Route::post('import', \App\Http\Actions\Api\ShopProduct\ImportProductsAction::class);
+    Route::post('import-computers', \App\Http\Actions\Api\ShopProduct\ImportComputersAction::class);
     Route::post('{id}', \App\Http\Actions\Api\ShopProduct\UpdateProductAction::class);
     Route::delete('{id}', \App\Http\Actions\Api\ShopProduct\DeleteProductAction::class);
 });
