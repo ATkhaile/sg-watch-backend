@@ -22,7 +22,10 @@ class ImportProductsAction extends BaseController
     // dd($data);
 
     try {
-      Excel::import(new ShopProductImport, $request->file('file'));
+      Excel::import(
+        new ShopProductImport($request->input('category_id'), $request->input('brand_id')),
+        $request->file('file')
+      );
 
       return response()->json([
         'status' => 'success',
