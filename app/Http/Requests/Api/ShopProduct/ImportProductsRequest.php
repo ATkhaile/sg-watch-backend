@@ -15,6 +15,8 @@ class ImportProductsRequest extends ApiFormRequest
   {
     return [
       'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // Max 10MB
+      'brand_id' => ['required', 'integer', 'exists:shop_brands,id'],
+      'category_id' => ['required', 'integer', 'exists:shop_categories,id'],
     ];
   }
 }

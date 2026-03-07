@@ -2,8 +2,6 @@
 
 namespace App\Imports;
 
-use App\Models\Shop\Brand;
-use App\Models\Shop\Category;
 use App\Models\Shop\Product;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -11,21 +9,14 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class ShopProductImport implements ToModel, WithHeadingRow
 {
-  private ?int $categoryId = null;
+  private int $categoryId;
+  private int $brandId;
   private int $nextDisplayOrder = 1;
 
-  public function __construct()
+  public function __construct(int $categoryId, int $brandId)
   {
-    // Find or create a fixed category "Đồng hồ"
-    $category = Category::firstOrCreate(
-      ['slug' => 'dong-ho'],
-      [
-        'name' => 'Đồng hồ',
-        'slug' => 'dong-ho',
-        'is_active' => true,
-      ]
-    );
-    $this->categoryId = $category->id;
+    $this->categoryId = $categoryId;
+    $this->brandId = $brandId;
 
     // Initialize next display order to be at the end of the existing list
     $maxOrder = Product::withTrashed()->max('display_order') ?? 0;
@@ -40,21 +31,12 @@ class ShopProductImport implements ToModel, WithHeadingRow
       return null;
     }
 
-    // 3: Nếu tên Thương hiệu trong file Excel chưa có trong database hãy tự động tạo mới
-    $brandName = $row['hang_dong_ho'] ?? 'Other';
-    $brand = Brand::firstOrCreate(
-      ['slug' => Str::slug($brandName)],
-      [
-        'name' => $brandName,
-        'slug' => Str::slug($brandName),
-        'is_active' => true,
-      ]
-    );
+
 
     // Xử lý giá tiền (Xóa ¥ và dấu chấm phân cách hàng nghìn)
-    $priceJpy = $this->parsePrice($row['gia_yen'] ?? '0');
-    $originalPriceJpy = $this->parsePrice($row['gia_goc_yen'] ?? '0');
-    $costPriceJpy = $this->parsePrice($row['gia_nhap'] ?? '0');
+    $priceJpy = $this->parsePrice($row['gia_ban_yen'] ?? '0');
+    $originalPriceJpy = $this->parsePrice($row['gia_niem_yet_yen'] ?? '0');
+    $costPriceJpy = $this->parsePrice($row['gia_nhapyen'] ?? '0');
 
     // Xử lý bảo hành (VD: "5 Năm" -> 60)
     $warrantyMonths = $this->parseWarranty($row['so_thang_bao_hanh'] ?? '');
@@ -62,14 +44,20 @@ class ShopProductImport implements ToModel, WithHeadingRow
     // Xử lý giới tính
     $gender = $this->mapGender($row['gioi_tinh'] ?? '');
 
+    // Xử lý nội địa
+    $isDomestic = $this->mapIsDomestic($row['co_phai_noi_dia_khong'] ?? '');
+
+    // Xử lý loại hàng (order / có sẵn)
+    $stockType = $this->mapStockType($row['hang_order'] ?? '');
+
     $product = new Product([
       'category_id' => $this->categoryId,
-      'brand_id' => $brand->id,
+      'brand_id' => $this->brandId,
       'name' => $row['ten_dong_ho'],
       'slug' => Str::slug($row['ten_dong_ho']) . '-' . Str::random(5),
       'sku' => $sku,
       'short_description' => $row['mo_ta_ngan'] ?? null,
-      'description' => $row['mo_ta_chi_tiet'] ?? null,
+      'description' => $row['goi_y_su_dung'] ?? null,
       'product_info' => $row['thong_tin_san_pham'] ?? null,
       'deal_info' => $row['thong_tin_khuyen_mai'] ?? null,
       'price_jpy' => $priceJpy,
@@ -79,8 +67,10 @@ class ShopProductImport implements ToModel, WithHeadingRow
       'gender' => $gender,
       'movement_type' => $this->mapMovementType($row['loai_pinco'] ?? ''),
       'stock_quantity' => (int) ($row['so_luong_hang_con'] ?? 0),
+      'stock_type' => $stockType,
       'warranty_months' => $warrantyMonths,
       'is_active' => true,
+      'is_domestic' => $isDomestic,
       'condition' => 'new',
       'display_order' => $this->nextDisplayOrder++,
     ]);
@@ -128,5 +118,22 @@ class ShopProductImport implements ToModel, WithHeadingRow
       return 'automatic';
     }
     return null;
+  }
+
+  private function mapIsDomestic(?string $value): bool
+  {
+    if (!$value) return false;
+    $value = strtolower($value);
+    return str_contains($value, 'có') || str_contains($value, 'yes') || $value === '1';
+  }
+
+  private function mapStockType(?string $value): string
+  {
+    if (!$value) return 'in_stock';
+    $value = strtolower($value);
+    if (str_contains($value, 'order') || str_contains($value, 'đặt')) {
+      return 'pre_order';
+    }
+    return 'in_stock';
   }
 }
