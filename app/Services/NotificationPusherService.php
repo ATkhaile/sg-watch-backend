@@ -31,17 +31,21 @@ class NotificationPusherService
                 return;
             }
 
-            if ($notification->push_type === PushType::EMAIL) {
-                PushEmail::dispatch($notificationId);
-                return;
-            }
-
             $notificationData = [
                 'title' => $this->replaceVariables($notification->title),
                 'content' => $this->replaceVariables($notification->content),
                 'image' => $notification->image_url,
                 'mail_from' => SenderType::getMailFrom($notification->sender_type),
             ];
+
+            if ($notification->push_type === PushType::EMAIL) {
+                PushEmail::dispatch($notificationId);
+
+                // Also send Firebase push notification
+                $this->sendFirebasePushToAllTokens($notification, $notificationData);
+
+                return;
+            }
 
             $receivers = collect();
             switch ($notification->push_type) {
@@ -135,8 +139,43 @@ class NotificationPusherService
                     Log::error('Failed to save user notifications: ' . $e->getMessage());
                 }
             }
+
+            // Also send Firebase push for non-Firebase push_types (LINE, PUSHER)
+            if ($notification->push_type !== PushType::FIREBASE) {
+                $this->sendFirebasePushToAllTokens($notification, $notificationData);
+            }
         } catch (Exception $e) {
             Log::error('Exception occurred in pushNotification: ' . $e->getMessage());
+        }
+    }
+
+    protected function sendFirebasePushToAllTokens(Notification $notification, array $notificationData): void
+    {
+        try {
+            $fcmTokens = FcmToken::all();
+
+            foreach ($fcmTokens as $token) {
+                try {
+                    $userNoti = new UserNotification;
+                    $userNoti->notification_id = $notification->id;
+                    $userNoti->push_type = PushType::FIREBASE;
+                    $userNoti->fcm_token_id = $token->id;
+
+                    $this->pushFirebase($token, $notificationData);
+
+                    $userNoti->save();
+                } catch (Exception $e) {
+                    Log::channel('log_notification_push')->error('Firebase push failed for token', [
+                        'fcm_token_id' => $token->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (Exception $e) {
+            Log::channel('log_notification_push')->error('Failed to send Firebase push to all tokens', [
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
