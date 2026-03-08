@@ -15,6 +15,7 @@ Route::group([
     'middleware' => ['auth.system_admin'],
     'prefix' => 'admin',
 ], function () {
+    require __DIR__ . '/system_admin/dashboard.php';
     require __DIR__ . '/system_admin/shop_product.php';
     require __DIR__ . '/system_admin/shop_order.php';
     require __DIR__ . '/system_admin/user.php';
