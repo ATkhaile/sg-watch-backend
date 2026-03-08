@@ -14,8 +14,9 @@ class AdminGetDashboardRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'filter_type' => ['nullable', 'string', 'in:day,month,year'],
-            'date' => ['nullable', 'date', 'date_format:Y-m-d', 'required_if:filter_type,day'],
+            'filter_type' => ['nullable', 'string', 'in:date_range,month,year'],
+            'date_from' => ['nullable', 'date', 'date_format:Y-m-d', 'required_if:filter_type,date_range'],
+            'date_to' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:date_from', 'required_if:filter_type,date_range'],
             'month' => ['nullable', 'date_format:Y-m', 'required_if:filter_type,month'],
             'year' => ['nullable', 'integer', 'min:2020', 'max:2100', 'required_if:filter_type,year'],
         ];

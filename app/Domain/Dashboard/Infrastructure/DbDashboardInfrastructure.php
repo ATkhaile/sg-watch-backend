@@ -6,6 +6,7 @@ use App\Domain\Dashboard\Repository\DashboardRepository;
 use App\Enums\OrderStatus;
 use App\Models\Shop\Order;
 use App\Models\Shop\Product;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DbDashboardInfrastructure implements DashboardRepository
@@ -59,64 +60,41 @@ class DbDashboardInfrastructure implements DashboardRepository
     private function getDateRange(string $filterType, array $filters): array
     {
         switch ($filterType) {
-            case 'day':
-                $date = \Carbon\Carbon::parse($filters['date']);
-                return [$date->copy()->startOfDay(), $date->copy()->endOfDay()];
+            case 'date_range':
+                $from = Carbon::parse($filters['date_from'])->startOfDay();
+                $to = Carbon::parse($filters['date_to'])->endOfDay();
+                return [$from, $to];
 
             case 'year':
                 $year = (int) $filters['year'];
-                $start = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
-                $end = \Carbon\Carbon::create($year, 12, 31)->endOfDay();
-                return [$start, $end];
+                return [
+                    Carbon::create($year, 1, 1)->startOfDay(),
+                    Carbon::create($year, 12, 31)->endOfDay(),
+                ];
 
             case 'month':
             default:
-                if (!empty($filters['month'])) {
-                    $date = \Carbon\Carbon::createFromFormat('Y-m', $filters['month']);
-                } else {
-                    $date = now();
-                }
-                return [$date->copy()->startOfMonth()->startOfDay(), $date->copy()->endOfMonth()->endOfDay()];
+                $date = !empty($filters['month'])
+                    ? Carbon::createFromFormat('Y-m', $filters['month'])
+                    : now();
+                return [
+                    $date->copy()->startOfMonth()->startOfDay(),
+                    $date->copy()->endOfMonth()->endOfDay(),
+                ];
         }
     }
 
     private function getRevenueChart(string $filterType, array $filters, $dateFrom, $dateTo): array
     {
         switch ($filterType) {
-            case 'day':
-                return $this->getRevenueByHour($dateFrom, $dateTo);
-
             case 'year':
                 return $this->getRevenueByMonth((int) $filters['year']);
 
+            case 'date_range':
             case 'month':
             default:
                 return $this->getRevenueByDay($dateFrom, $dateTo);
         }
-    }
-
-    private function getRevenueByHour($dateFrom, $dateTo): array
-    {
-        $data = Order::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->whereNotIn('status', [OrderStatus::CANCELLED, OrderStatus::REFUNDED])
-            ->selectRaw('EXTRACT(HOUR FROM created_at) as hour')
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue')
-            ->selectRaw('COUNT(*) as orders')
-            ->groupByRaw('EXTRACT(HOUR FROM created_at)')
-            ->orderByRaw('EXTRACT(HOUR FROM created_at)')
-            ->get()
-            ->keyBy('hour');
-
-        $result = [];
-        for ($h = 0; $h < 24; $h++) {
-            $result[] = [
-                'label' => sprintf('%02d:00', $h),
-                'revenue' => (float) ($data[$h]->revenue ?? 0),
-                'orders' => (int) ($data[$h]->orders ?? 0),
-            ];
-        }
-
-        return $result;
     }
 
     private function getRevenueByDay($dateFrom, $dateTo): array
