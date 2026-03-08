@@ -62,6 +62,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Notice
         $this->app->register(\App\Providers\Domain\NoticeDomainProvider::class);
+
+        // Dashboard
+        $this->app->register(\App\Providers\Domain\DashboardDomainProvider::class);
     }
 
     /**
