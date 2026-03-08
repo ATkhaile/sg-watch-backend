@@ -1096,6 +1096,26 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     'payment_status' => PaymentStatus::PAID,
                     'paid_at' => now(),
                 ]);
+
+                // Create user notice and send Firebase push notification
+                $paymentLabel = $this->getVietnamesePaymentStatusLabel(PaymentStatus::PAID);
+                $noticeTitle = "Đơn hàng #{$order->order_number} cập nhật thanh toán";
+                $noticeContent = "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}";
+                $noticeData = [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_status' => PaymentStatus::PAID,
+                ];
+
+                UserNotice::create([
+                    'user_id' => $order->user_id,
+                    'type' => 'payment_status',
+                    'title' => $noticeTitle,
+                    'content' => $noticeContent,
+                    'data' => $noticeData,
+                ]);
+
+                $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
             }
         }
 
@@ -1107,6 +1127,26 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $order->update([
                     'payment_status' => PaymentStatus::FAILED,
                 ]);
+
+                // Create user notice and send Firebase push notification
+                $paymentLabel = $this->getVietnamesePaymentStatusLabel(PaymentStatus::FAILED);
+                $noticeTitle = "Đơn hàng #{$order->order_number} cập nhật thanh toán";
+                $noticeContent = "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}";
+                $noticeData = [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'payment_status' => PaymentStatus::FAILED,
+                ];
+
+                UserNotice::create([
+                    'user_id' => $order->user_id,
+                    'type' => 'payment_status',
+                    'title' => $noticeTitle,
+                    'content' => $noticeContent,
+                    'data' => $noticeData,
+                ]);
+
+                $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
             }
         }
 
