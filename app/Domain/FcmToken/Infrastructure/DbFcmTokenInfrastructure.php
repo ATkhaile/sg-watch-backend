@@ -6,7 +6,6 @@ use App\Domain\FcmToken\Entity\CreateFcmTokenRequestEntity;
 use App\Domain\FcmToken\Entity\UpdateFcmTokenStatusRequestEntity;
 use App\Domain\FcmToken\Entity\DeleteFcmTokenRequestEntity;
 use App\Domain\FcmToken\Repository\FcmTokenRepository;
-use App\Models\AppVersion;
 use App\Models\FcmToken;
 
 class DbFcmTokenInfrastructure implements FcmTokenRepository
@@ -21,17 +20,15 @@ class DbFcmTokenInfrastructure implements FcmTokenRepository
     public function store(CreateFcmTokenRequestEntity $requestEntity): bool
     {
         $fcmToken = FcmToken::where('fcm_token', $requestEntity->fcm_token)->first();
-        $appVersionId = AppVersion::where('version_name', $requestEntity->app_version_name)->first()?->id ?? null;
 
         if (!$fcmToken) {
             $fcmToken = new FcmToken();
             $fcmToken->fcm_token = $requestEntity->fcm_token;
         }
 
-        $fcmToken->user_id  = $requestEntity->user_id;
-        $fcmToken->device_name  = $requestEntity->device_name;
-        $fcmToken->app_id = $requestEntity->app_id;   
-        $fcmToken->app_version_id = $appVersionId;
+        $fcmToken->user_id = $requestEntity->user_id;
+        $fcmToken->device_name = $requestEntity->device_name;
+        $fcmToken->app_id = $requestEntity->app_id;
 
         return $fcmToken->save();
     }
