@@ -152,7 +152,12 @@ class NotificationPusherService
     protected function sendFirebasePushToAllTokens(Notification $notification, array $notificationData): void
     {
         try {
-            $fcmTokens = FcmToken::all();
+            $disabledUserIds = User::where('push_notification_enabled', false)->pluck('id')->toArray();
+            $query = FcmToken::query();
+            if (!empty($disabledUserIds)) {
+                $query->whereNotIn('user_id', $disabledUserIds);
+            }
+            $fcmTokens = $query->get();
 
             foreach ($fcmTokens as $token) {
                 try {
@@ -206,16 +211,24 @@ class NotificationPusherService
                 'attach_link' => $notificationPush->attach_link,
             ];
 
+            $disabledUserIds = User::where('push_notification_enabled', false)->pluck('id')->toArray();
+
             $receivers = collect();
             if ($notificationPush->all_user_flag) {
-                $receivers = FcmToken::where('active_status', ActiveStatus::ACTIVE)->whereNotNull('user_id')->get();
+                $query = FcmToken::where('active_status', ActiveStatus::ACTIVE)->whereNotNull('user_id');
+                if (!empty($disabledUserIds)) {
+                    $query->whereNotIn('user_id', $disabledUserIds);
+                }
+                $receivers = $query->get();
             } else {
-                $receivers = FcmToken::query()
+                $query = FcmToken::query()
                     ->join('user_notification_pushs', 'fcm_tokens.user_id', '=', 'user_notification_pushs.user_id')
                     ->where('user_notification_pushs.notification_push_id', $notificationPushId)
-                    ->where('fcm_tokens.active_status', ActiveStatus::ACTIVE)
-                    ->select('fcm_tokens.*')
-                    ->get();
+                    ->where('fcm_tokens.active_status', ActiveStatus::ACTIVE);
+                if (!empty($disabledUserIds)) {
+                    $query->whereNotIn('fcm_tokens.user_id', $disabledUserIds);
+                }
+                $receivers = $query->select('fcm_tokens.*')->get();
             }
 
             $userNotificationHistories = [];

@@ -956,6 +956,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
     private function sendOrderStatusPush(int $userId, string $title, string $body, array $data): void
     {
         try {
+            $user = User::find($userId);
+            if ($user && !$user->push_notification_enabled) {
+                return;
+            }
+
             $fcmTokens = FcmToken::where('user_id', $userId)
                 ->whereNull('deleted_at')
                 ->pluck('fcm_token')
@@ -1020,8 +1025,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 ]);
             }
 
+            // Filter out admins with push notifications disabled
+            $enabledAdminIds = User::whereIn('id', $adminUserIds)
+                ->where('push_notification_enabled', true)
+                ->pluck('id')
+                ->toArray();
+
             // Send Firebase push to all admin FCM tokens
-            $fcmTokens = FcmToken::whereIn('user_id', $adminUserIds)
+            $fcmTokens = FcmToken::whereIn('user_id', $enabledAdminIds)
                 ->whereNull('deleted_at')
                 ->pluck('fcm_token')
                 ->toArray();

@@ -23,6 +23,7 @@ Route::post('request-email-change', \App\Http\Actions\Api\Auth\RequestEmailChang
 Route::post('confirm-email-change', \App\Http\Actions\Api\Auth\ConfirmEmailChangeAction::class);
 Route::delete('withdraw', \App\Http\Actions\Api\Auth\WithdrawAction::class);
 Route::get('user-point', \App\Http\Actions\Api\Auth\GetUserPointAction::class);
+Route::post('toggle-notification', \App\Http\Actions\Api\Auth\ToggleNotificationAction::class);
 
 // FCM Token
 Route::post('fcm_token', \App\Http\Actions\Api\FcmToken\CreateFcmTokenAction::class);

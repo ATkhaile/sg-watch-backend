@@ -13,6 +13,7 @@ class UserInfoEntity implements \JsonSerializable
         private ?string $birthday = null,
         private ?string $role = null,
         private ?string $email = null,
+        private bool $pushNotificationEnabled = true,
     ) {
     }
 
@@ -35,6 +36,7 @@ class UserInfoEntity implements \JsonSerializable
         $result['birthday'] = $this->birthday;
         $result['role'] = $this->role;
         $result['email'] = $this->email;
+        $result['push_notification_enabled'] = $this->pushNotificationEnabled;
 
         return $result;
     }

@@ -5,7 +5,7 @@ namespace App\Domain\Auth\UseCase;
 use App\Domain\Auth\Entity\UserInfoEntity;
 use App\Components\CommonComponent;
 
-final class UserInfoUseCase
+final class ToggleNotificationUseCase
 {
     public function __invoke(): UserInfoEntity
     {
@@ -14,6 +14,9 @@ final class UserInfoUseCase
         if (!$user) {
             throw new \Exception(__('auth.notfound'));
         }
+
+        $user->push_notification_enabled = !$user->push_notification_enabled;
+        $user->save();
 
         $avatarUrl = null;
         if ($user->avatar_url) {
@@ -29,7 +32,7 @@ final class UserInfoUseCase
             birthday: $user->birthday?->format('Y-m-d'),
             role: $user->isSystemAdmin() ? 'admin' : 'user',
             email: $user->email,
-            pushNotificationEnabled: (bool) ($user->push_notification_enabled ?? true),
+            pushNotificationEnabled: (bool) $user->push_notification_enabled,
         );
     }
 }

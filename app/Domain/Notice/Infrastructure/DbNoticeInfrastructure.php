@@ -7,6 +7,7 @@ use App\Enums\PushType;
 use App\Models\FcmToken;
 use App\Models\Notice;
 use App\Models\PusherInfo;
+use App\Models\User;
 use App\Models\UserNotice;
 use Exception;
 use GuzzleHttp\Client;
@@ -197,7 +198,11 @@ class DbNoticeInfrastructure implements NoticeRepository
     private function sendNoticePush(Notice $notice): void
     {
         try {
-            $fcmTokens = FcmToken::whereNotNull('user_id')->pluck('fcm_token')->toArray();
+            $disabledUserIds = User::where('push_notification_enabled', false)->pluck('id')->toArray();
+            $fcmTokens = FcmToken::whereNotNull('user_id')
+                ->when(!empty($disabledUserIds), fn($q) => $q->whereNotIn('user_id', $disabledUserIds))
+                ->pluck('fcm_token')
+                ->toArray();
 
             if (empty($fcmTokens)) {
                 return;

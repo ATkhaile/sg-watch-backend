@@ -49,6 +49,7 @@ class User extends Authenticatable implements JWTSubject, AuditableContract
         'inviter_id',
         'invited_at',
         'point',
+        'push_notification_enabled',
     ];
 
     protected $hidden = [
@@ -66,6 +67,7 @@ class User extends Authenticatable implements JWTSubject, AuditableContract
             'invited_at' => 'datetime:Y/m/d H:i:s',
             'birthday' => 'date:Y-m-d',
             'is_system_admin' => 'boolean',
+            'push_notification_enabled' => 'boolean',
         ];
     }
 

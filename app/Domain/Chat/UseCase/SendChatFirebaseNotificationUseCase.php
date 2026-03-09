@@ -14,10 +14,20 @@ class SendChatFirebaseNotificationUseCase
 {
     public function execute(array $messageData, string $chatType = 'direct', array $recipientUserIds = []): void
     {
+        $disabledUserIds = User::where('push_notification_enabled', false)->pluck('id')->toArray();
+
         if (!empty($recipientUserIds)) {
+            $recipientUserIds = array_diff($recipientUserIds, $disabledUserIds);
+            if (empty($recipientUserIds)) {
+                return;
+            }
             $fcmTokens = FcmToken::whereIn('user_id', $recipientUserIds)->get();
         } else {
-            $fcmTokens = FcmToken::all();
+            $query = FcmToken::query();
+            if (!empty($disabledUserIds)) {
+                $query->whereNotIn('user_id', $disabledUserIds);
+            }
+            $fcmTokens = $query->get();
         }
 
         if ($fcmTokens->isEmpty()) {
