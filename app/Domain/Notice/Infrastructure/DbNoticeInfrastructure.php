@@ -68,6 +68,7 @@ class DbNoticeInfrastructure implements NoticeRepository
         }
 
         $notice = Notice::create($data);
+        $notice->refresh();
 
         // Send Firebase push notification to all active users
         if ($notice->is_active) {
