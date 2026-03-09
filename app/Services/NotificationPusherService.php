@@ -47,13 +47,19 @@ class NotificationPusherService
                 return;
             }
 
+            $disabledUserIds = User::where('push_notification_enabled', false)->pluck('id')->toArray();
+
             $receivers = collect();
             switch ($notification->push_type) {
                 case PushType::PUSHER:
                     $receivers = User::all();
                     break;
                 case PushType::FIREBASE:
-                    $receivers = FcmToken::all();
+                    $query = FcmToken::query();
+                    if (!empty($disabledUserIds)) {
+                        $query->whereNotIn('user_id', $disabledUserIds);
+                    }
+                    $receivers = $query->get();
                     break;
                 case PushType::LINE:
                     $receivers = User::whereNotNull('users.id')
