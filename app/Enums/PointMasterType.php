@@ -8,4 +8,5 @@ final class PointMasterType extends Enum
 {
     const DAILY_BONUS = 'daily_bonus';
     const AFFILIATE_BONUS = 'affiliate_bonus';
+    const ORDER_BONUS = 'order_bonus';
 }

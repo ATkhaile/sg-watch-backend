@@ -50,10 +50,14 @@ class PointBonusComponent
         $pointHistory = new PointHistory();
         $pointHistory->user_id = $user->id;
         $pointHistory->point = $pointSetting['point'];
+        $pointHistory->remaining_point = $pointSetting['point'];
         $pointHistory->memo = 'Daily bonus';
         $pointHistory->point_type = PointMasterType::DAILY_BONUS;
         $pointHistory->last_update_user_id = $user->id;
+        $pointHistory->expired_at = Carbon::now()->addMonths(6);
         $pointHistory->save();
+
+        PointHistory::syncUserPoint($user->id);
     }
 
     private static function getPointSetting(int $userId): ?array
@@ -112,10 +116,14 @@ class PointBonusComponent
             PointHistory::create([
                 'user_id'             => $data['user_id'],
                 'point'               => $setting['point'],
+                'remaining_point'     => $setting['point'],
                 'memo'                => 'Affiliate bonus',
                 'point_type'          => PointMasterType::AFFILIATE_BONUS,
                 'last_update_user_id' => $data['user_id'],
+                'expired_at'          => Carbon::now()->addMonths(6),
             ]);
+
+            PointHistory::syncUserPoint($data['user_id']);
         }
     }
 

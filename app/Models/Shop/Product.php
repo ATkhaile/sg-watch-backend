@@ -2,6 +2,7 @@
 
 namespace App\Models\Shop;
 
+use App\Components\CommonComponent;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -103,8 +104,10 @@ class Product extends Model
 
     public function getPrimaryImageUrlAttribute(): ?string
     {
-        return $this->images()->where('is_primary', true)->value('image_url')
+        $imageUrl = $this->images()->where('is_primary', true)->value('image_url')
             ?? $this->images()->orderBy('sort_order')->value('image_url');
+
+        return $imageUrl ? CommonComponent::getFullUrl($imageUrl) : null;
     }
 
     // =========================================================================

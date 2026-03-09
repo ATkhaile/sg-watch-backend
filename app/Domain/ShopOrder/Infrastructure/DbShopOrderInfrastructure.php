@@ -19,8 +19,11 @@ use App\Models\UserAddress;
 use App\Models\UserNotice;
 use App\Models\FcmToken;
 use App\Models\PusherInfo;
+use App\Models\PointHistory;
 use App\Enums\PushType;
+use App\Enums\PointMasterType;
 use GuzzleHttp\Client;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -94,11 +97,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         // Validate and apply points
         $pointsUsed = 0;
         if (!empty($data['use_points']) && $currency === 'JPY') {
-            $user = User::find($userId);
+            $availablePoints = PointHistory::getAvailablePoints($userId);
             $requestedPoints = (int) $data['use_points'];
 
-            if ($requestedPoints > $user->point) {
-                return ['success' => false, 'message' => 'Insufficient points. Available: ' . $user->point];
+            if ($requestedPoints > $availablePoints) {
+                return ['success' => false, 'message' => 'Insufficient points. Available: ' . $availablePoints];
             }
 
             $maxDeductible = $subtotal + $shippingFee + $codFee - $discountAmount;
@@ -148,9 +151,10 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $discountCode->decrement('quantity', 1);
             }
 
-            // Deduct points from user
+            // Deduct points from user (FIFO: dùng điểm cũ nhất trước)
             if ($pointsUsed > 0) {
-                User::where('id', $userId)->decrement('point', $pointsUsed);
+                PointHistory::spendPoints($userId, $pointsUsed);
+                PointHistory::syncUserPoint($userId);
             }
 
             foreach ($cart->items as $item) {
@@ -282,7 +286,16 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
             // Restore points to user
             if ($order->points_used > 0) {
-                User::where('id', $order->user_id)->increment('point', $order->points_used);
+                PointHistory::create([
+                    'user_id'             => $order->user_id,
+                    'point'               => $order->points_used,
+                    'remaining_point'     => $order->points_used,
+                    'memo'                => 'Refund points from cancelled order #' . $order->order_number,
+                    'point_type'          => PointMasterType::ORDER_BONUS,
+                    'last_update_user_id' => $order->user_id,
+                    'expired_at'          => Carbon::now()->addMonths(6),
+                ]);
+                PointHistory::syncUserPoint($order->user_id);
             }
 
             $order->update([
@@ -509,7 +522,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             // Deduct awarded points when moving away from completed (chỉ áp dụng cho đơn có user)
             if ($order->user_id && $order->status === OrderStatus::COMPLETED && $status !== OrderStatus::COMPLETED) {
                 if ($order->points_earned > 0) {
-                    User::where('id', $order->user_id)->decrement('point', $order->points_earned);
+                    // Tìm và xóa remaining của PointHistory order bonus tương ứng
+                    $orderBonusHistory = PointHistory::where('user_id', $order->user_id)
+                        ->where('point_type', PointMasterType::ORDER_BONUS)
+                        ->where('memo', 'like', '%#' . $order->order_number)
+                        ->where('remaining_point', '>', 0)
+                        ->first();
+
+                    if ($orderBonusHistory) {
+                        $orderBonusHistory->update(['remaining_point' => 0]);
+                    }
+
+                    PointHistory::syncUserPoint($order->user_id);
                     $updateData['points_earned'] = 0;
                 }
             }
@@ -530,7 +554,16 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                 // Restore points to user (chỉ áp dụng cho đơn có user)
                 if ($order->user_id && $order->points_used > 0) {
-                    User::where('id', $order->user_id)->increment('point', $order->points_used);
+                    PointHistory::create([
+                        'user_id'             => $order->user_id,
+                        'point'               => $order->points_used,
+                        'remaining_point'     => $order->points_used,
+                        'memo'                => 'Refund points from cancelled order #' . $order->order_number,
+                        'point_type'          => PointMasterType::ORDER_BONUS,
+                        'last_update_user_id' => $order->user_id,
+                        'expired_at'          => Carbon::now()->addMonths(6),
+                    ]);
+                    PointHistory::syncUserPoint($order->user_id);
                 }
             }
 
@@ -965,7 +998,17 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $points = 500;
         }
 
-        User::where('id', $order->user_id)->increment('point', $points);
+        PointHistory::create([
+            'user_id'             => $order->user_id,
+            'point'               => $points,
+            'remaining_point'     => $points,
+            'memo'                => 'Order bonus #' . $order->order_number,
+            'point_type'          => PointMasterType::ORDER_BONUS,
+            'last_update_user_id' => $order->user_id,
+            'expired_at'          => Carbon::now()->addMonths(6),
+        ]);
+
+        PointHistory::syncUserPoint($order->user_id);
         $order->update(['points_earned' => $points]);
     }
 
