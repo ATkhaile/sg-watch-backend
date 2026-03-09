@@ -3,16 +3,16 @@
 namespace App\Domain\Notice\Infrastructure;
 
 use App\Domain\Notice\Repository\NoticeRepository;
-use App\Enums\ActiveStatus;
+use App\Enums\PushType;
 use App\Models\FcmToken;
 use App\Models\Notice;
+use App\Models\PusherInfo;
 use App\Models\UserNotice;
+use Exception;
+use GuzzleHttp\Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Kreait\Firebase\Factory;
-use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification;
 
 class DbNoticeInfrastructure implements NoticeRepository
 {
@@ -196,41 +196,80 @@ class DbNoticeInfrastructure implements NoticeRepository
     private function sendNoticePush(Notice $notice): void
     {
         try {
-            $credentialsPath = base_path(config('services.firebase.credentials_path'));
-            if (!$credentialsPath || !file_exists($credentialsPath)) {
-                Log::channel('log_notification_push')->error('Firebase credentials file not found', [
-                    'path' => config('services.firebase.credentials_path'),
-                ]);
-                return;
-            }
-
-            $fcmTokens = FcmToken::where('active_status', ActiveStatus::ACTIVE)
-                ->whereNotNull('user_id')
-                ->pluck('fcm_token')
-                ->toArray();
+            $fcmTokens = FcmToken::whereNotNull('user_id')->pluck('fcm_token')->toArray();
 
             if (empty($fcmTokens)) {
                 return;
             }
 
-            $messaging = (new Factory)
-                ->withServiceAccount($credentialsPath)
-                ->createMessaging();
+            $accessToken = $this->getFirebaseAccessToken();
+            if (!$accessToken) {
+                Log::channel('log_notification_push')->error('Failed to get Firebase access token for notice push');
+                return;
+            }
 
-            $notification = Notification::create($notice->title, $notice->content);
+            $setting = PusherInfo::where('push_type', PushType::FIREBASE)->first();
+            $projectId = $setting ? $setting->firebase_project_id : config('services.firebase.project_id');
+            if (!$projectId) {
+                Log::channel('log_notification_push')->error('Firebase project ID not configured');
+                return;
+            }
 
-            $data = [
-                'type' => 'notice',
-                'notice_id' => (string) $notice->id,
-            ];
+            $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+            $title = $notice->title;
+            $body = $notice->content;
 
             foreach ($fcmTokens as $token) {
                 try {
-                    $message = CloudMessage::withTarget('token', $token)
-                        ->withNotification($notification)
-                        ->withData($data);
+                    $payload = [
+                        'message' => [
+                            'token' => $token,
+                            'notification' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                            'data' => [
+                                'redirectType' => 'notice',
+                                'type' => 'notice',
+                                'noticeId' => (string) $notice->id,
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                            'android' => [
+                                'priority' => 'HIGH',
+                                'notification' => [
+                                    'sound' => 'default',
+                                    'channel_id' => 'notices',
+                                ],
+                            ],
+                            'apns' => [
+                                'headers' => [
+                                    'apns-priority' => '10',
+                                ],
+                                'payload' => [
+                                    'aps' => [
+                                        'sound' => 'default',
+                                        'badge' => 1,
+                                        'alert' => [
+                                            'title' => $title,
+                                            'body' => $body,
+                                        ],
+                                        'mutable-content' => 1,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ];
 
-                    $messaging->send($message);
+                    $httpClient = new Client();
+                    $httpClient->post($url, [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type' => 'application/json',
+                        ],
+                        'json' => $payload,
+                        'timeout' => 30,
+                    ]);
                 } catch (\Throwable $e) {
                     Log::channel('log_notification_push')->error('Firebase push failed for token (notice)', [
                         'notice_id' => $notice->id,
@@ -244,6 +283,62 @@ class DbNoticeInfrastructure implements NoticeRepository
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function getFirebaseAccessToken(): ?string
+    {
+        $setting = PusherInfo::where('push_type', PushType::FIREBASE)->first();
+        $credentialsPath = $setting ? $setting->firebase_credentials_path : config('services.firebase.credentials_path');
+        if (!$credentialsPath) {
+            return null;
+        }
+
+        $fullPath = base_path($credentialsPath);
+        if (!file_exists($fullPath)) {
+            return null;
+        }
+
+        $json = json_decode(file_get_contents($fullPath), true);
+        if (!$json || !isset($json['client_email']) || !isset($json['private_key'])) {
+            return null;
+        }
+
+        $header = ['alg' => 'RS256', 'typ' => 'JWT'];
+        $now = time();
+        $payload = [
+            'iss' => $json['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'iat' => $now,
+            'exp' => $now + 3600,
+        ];
+
+        $base64UrlHeader = rtrim(strtr(base64_encode(json_encode($header)), '+/', '-_'), '=');
+        $base64UrlPayload = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+        $data = $base64UrlHeader . '.' . $base64UrlPayload;
+
+        if (!openssl_sign($data, $signature, $json['private_key'], 'sha256WithRSAEncryption')) {
+            return null;
+        }
+
+        $jwt = $data . '.' . rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+
+        $httpClient = new Client();
+        $response = $httpClient->post('https://oauth2.googleapis.com/token', [
+            'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+            'form_params' => [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion' => $jwt,
+            ],
+            'timeout' => 30,
+        ]);
+
+        if ($response->getStatusCode() === 200) {
+            $responseData = json_decode($response->getBody()->getContents(), true);
+            return $responseData['access_token'] ?? null;
+        }
+
+        return null;
     }
 
     private function formatNotice(Notice $notice): array
