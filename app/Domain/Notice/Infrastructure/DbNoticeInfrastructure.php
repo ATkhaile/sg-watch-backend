@@ -3,10 +3,16 @@
 namespace App\Domain\Notice\Infrastructure;
 
 use App\Domain\Notice\Repository\NoticeRepository;
+use App\Enums\ActiveStatus;
+use App\Models\FcmToken;
 use App\Models\Notice;
 use App\Models\UserNotice;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class DbNoticeInfrastructure implements NoticeRepository
 {
@@ -62,6 +68,11 @@ class DbNoticeInfrastructure implements NoticeRepository
         }
 
         $notice = Notice::create($data);
+
+        // Send Firebase push notification to all active users
+        if ($notice->is_active) {
+            $this->sendNoticePush($notice);
+        }
 
         return [
             'success' => true,
@@ -180,6 +191,59 @@ class DbNoticeInfrastructure implements NoticeRepository
         $notice->update(['read_at' => now()]);
 
         return ['success' => true, 'message' => 'Notice marked as read.', 'status_code' => 200];
+    }
+
+    private function sendNoticePush(Notice $notice): void
+    {
+        try {
+            $credentialsPath = base_path(config('services.firebase.credentials_path'));
+            if (!$credentialsPath || !file_exists($credentialsPath)) {
+                Log::channel('log_notification_push')->error('Firebase credentials file not found', [
+                    'path' => config('services.firebase.credentials_path'),
+                ]);
+                return;
+            }
+
+            $fcmTokens = FcmToken::where('active_status', ActiveStatus::ACTIVE)
+                ->whereNotNull('user_id')
+                ->pluck('fcm_token')
+                ->toArray();
+
+            if (empty($fcmTokens)) {
+                return;
+            }
+
+            $messaging = (new Factory)
+                ->withServiceAccount($credentialsPath)
+                ->createMessaging();
+
+            $notification = Notification::create($notice->title, $notice->content);
+
+            $data = [
+                'type' => 'notice',
+                'notice_id' => (string) $notice->id,
+            ];
+
+            foreach ($fcmTokens as $token) {
+                try {
+                    $message = CloudMessage::withTarget('token', $token)
+                        ->withNotification($notification)
+                        ->withData($data);
+
+                    $messaging->send($message);
+                } catch (\Throwable $e) {
+                    Log::channel('log_notification_push')->error('Firebase push failed for token (notice)', [
+                        'notice_id' => $notice->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::channel('log_notification_push')->error('Firebase notice push failed', [
+                'notice_id' => $notice->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function formatNotice(Notice $notice): array

@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Mail;
 use Exception;
 use GuzzleHttp\Client;
 use Pusher\Pusher;
-use App\Models\PusherInfo;
 
 class NotificationPusherService
 {
@@ -274,8 +273,7 @@ class NotificationPusherService
                 return;
             }
 
-            $setting = PusherInfo::where('push_type', PushType::FIREBASE)->first();
-            $projectId = $setting ? $setting->firebase_project_id : config('services.firebase.project_id');
+            $projectId = config('services.firebase.project_id');
             if (!$projectId) {
                 Log::channel('log_notification_push')->error('Firebase project ID not configured');
                 return;
@@ -408,8 +406,7 @@ class NotificationPusherService
     protected function getFirebaseAccessToken(): ?string
     {
         try {
-            $setting = PusherInfo::where('push_type', PushType::FIREBASE)->first();
-            $credentialsPath = $setting ? $setting->firebase_credentials_path : config('services.firebase.credentials_path');
+            $credentialsPath = config('services.firebase.credentials_path');
             if (!$credentialsPath) {
                 Log::error('Firebase credentials path not configured');
                 return null;

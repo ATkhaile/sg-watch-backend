@@ -187,6 +187,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
             $order->load('items.product.category', 'items.product.brand');
 
+            // Notify all admins about new order
+            $this->sendOrderNotificationToAdmins(
+                "Đơn hàng mới #{$order->order_number}",
+                "Có đơn hàng mới được tạo.",
+                [
+                    'type' => 'order_created',
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => OrderStatus::PENDING,
+                ]
+            );
+
             $response = [
                 'success' => true,
                 'message' => 'Order placed successfully.',
@@ -541,8 +553,21 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'data' => $noticeData,
             ]);
 
-            // Send Firebase push notification
+            // Send Firebase push notification to customer
             $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+
+            // Notify all admins about order status change
+            $this->sendOrderNotificationToAdmins(
+                "Đơn hàng #{$order->order_number} cập nhật trạng thái",
+                "Trạng thái đơn hàng đã chuyển sang: {$statusLabel}",
+                [
+                    'type' => 'order_status',
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'old_status' => $order->getOriginal('status'),
+                    'new_status' => $status,
+                ]
+            );
 
             return [
                 'success' => true,
@@ -650,6 +675,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             }
 
             $order->load('items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email');
+
+            // Notify all admins about new order created by admin
+            $this->sendOrderNotificationToAdmins(
+                "Đơn hàng mới #{$order->order_number}",
+                "Có đơn hàng mới được tạo bởi admin.",
+                [
+                    'type' => 'order_created',
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $status,
+                ]
+            );
 
             return [
                 'success' => true,
@@ -850,6 +887,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
 
+        // Notify all admins about payment status change
+        $this->sendOrderNotificationToAdmins(
+            "Đơn hàng #{$order->order_number} cập nhật thanh toán",
+            "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
+            [
+                'type' => 'payment_status',
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'payment_status' => $paymentStatus,
+            ]
+        );
+
         return [
             'success' => true,
             'message' => 'Payment status updated successfully.',
@@ -947,6 +996,72 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         } catch (\Throwable $e) {
             Log::channel('log_notification_push')->error('Firebase push failed', [
                 'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendOrderNotificationToAdmins(string $title, string $body, array $data): void
+    {
+        try {
+            $credentialsPath = base_path(config('services.firebase.credentials_path'));
+            if (!$credentialsPath || !file_exists($credentialsPath)) {
+                return;
+            }
+
+            $adminUserIds = User::where('is_system_admin', true)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($adminUserIds)) {
+                return;
+            }
+
+            // Create UserNotice for each admin
+            foreach ($adminUserIds as $adminId) {
+                UserNotice::create([
+                    'user_id' => $adminId,
+                    'type' => $data['type'] ?? 'order_status',
+                    'title' => $title,
+                    'content' => $body,
+                    'data' => $data,
+                ]);
+            }
+
+            // Send Firebase push to all admin FCM tokens
+            $fcmTokens = FcmToken::whereIn('user_id', $adminUserIds)
+                ->whereNull('deleted_at')
+                ->pluck('fcm_token')
+                ->toArray();
+
+            if (empty($fcmTokens)) {
+                return;
+            }
+
+            $messaging = (new Factory)
+                ->withServiceAccount($credentialsPath)
+                ->createMessaging();
+
+            $notification = Notification::create($title, $body);
+
+            $stringData = array_map('strval', $data);
+            $stringData['type'] = $data['type'] ?? 'order_status';
+
+            foreach ($fcmTokens as $token) {
+                try {
+                    $message = CloudMessage::withTarget('token', $token)
+                        ->withNotification($notification)
+                        ->withData($stringData);
+
+                    $messaging->send($message);
+                } catch (\Throwable $e) {
+                    Log::channel('log_notification_push')->error('Firebase push to admin failed for token', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::channel('log_notification_push')->error('Firebase push to admins failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -1116,6 +1231,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 ]);
 
                 $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+
+                // Notify all admins about payment success
+                $this->sendOrderNotificationToAdmins(
+                    "Đơn hàng #{$order->order_number} cập nhật thanh toán",
+                    "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
+                    [
+                        'type' => 'payment_status',
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'payment_status' => PaymentStatus::PAID,
+                    ]
+                );
             }
         }
 
@@ -1147,6 +1274,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 ]);
 
                 $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+
+                // Notify all admins about payment failure
+                $this->sendOrderNotificationToAdmins(
+                    "Đơn hàng #{$order->order_number} cập nhật thanh toán",
+                    "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
+                    [
+                        'type' => 'payment_status',
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'payment_status' => PaymentStatus::FAILED,
+                    ]
+                );
             }
         }
 
