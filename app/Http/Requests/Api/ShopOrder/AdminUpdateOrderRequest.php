@@ -16,6 +16,7 @@ class AdminUpdateOrderRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
+            'customer_name' => ['nullable', 'string', 'max:255'],
             'items' => ['nullable', 'array', 'min:1'],
             'items.*.product_id' => ['required_with:items', 'integer', 'exists:shop_products,id'],
             'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],

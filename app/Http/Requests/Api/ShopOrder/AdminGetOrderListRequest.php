@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\ShopOrder;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Http\Requests\Api\ApiFormRequest;
@@ -21,6 +22,7 @@ class AdminGetOrderListRequest extends ApiFormRequest
             'order_number' => ['nullable', 'string', 'max:255'],
             'user_keyword' => ['nullable', 'string', 'max:255'],
             'product_keyword' => ['nullable', 'string', 'max:255'],
+            'order_type' => ['nullable', 'string', 'in:' . implode(',', OrderType::getValues())],
             'status' => ['nullable', 'string', 'in:' . implode(',', OrderStatus::getValues())],
             'payment_status' => ['nullable', 'string', 'in:' . implode(',', PaymentStatus::getValues())],
             'payment_method' => ['nullable', 'string', 'in:' . implode(',', PaymentMethod::getValues())],

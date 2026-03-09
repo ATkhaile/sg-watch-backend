@@ -5,6 +5,7 @@ namespace App\Domain\ShopOrder\Infrastructure;
 use App\Components\CommonComponent;
 use App\Domain\ShopOrder\Repository\ShopOrderRepository;
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\ShippingMethod;
@@ -334,6 +335,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $query = Order::query()
             ->with(['items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email']);
 
+        // Filter by order_type
+        if (!empty($filters['order_type'])) {
+            $query->where('order_type', $filters['order_type']);
+        }
+
         // Filter by status
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -372,6 +378,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $keyword = '%' . $filters['keyword'] . '%';
             $query->where(function ($q) use ($keyword) {
                 $q->where('order_number', 'like', $keyword)
+                  ->orWhere('customer_name', 'like', $keyword)
                   ->orWhereHas('user', function ($uq) use ($keyword) {
                       $uq->where('first_name', 'like', $keyword)
                         ->orWhere('last_name', 'like', $keyword)
@@ -499,8 +506,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 $updateData['admin_note'] = $extra['admin_note'];
             }
 
-            // Deduct awarded points when moving away from completed
-            if ($order->status === OrderStatus::COMPLETED && $status !== OrderStatus::COMPLETED) {
+            // Deduct awarded points when moving away from completed (chỉ áp dụng cho đơn có user)
+            if ($order->user_id && $order->status === OrderStatus::COMPLETED && $status !== OrderStatus::COMPLETED) {
                 if ($order->points_earned > 0) {
                     User::where('id', $order->user_id)->decrement('point', $order->points_earned);
                     $updateData['points_earned'] = 0;
@@ -521,8 +528,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     DiscountCode::where('id', $order->discount_code_id)->increment('quantity', 1);
                 }
 
-                // Restore points to user
-                if ($order->points_used > 0) {
+                // Restore points to user (chỉ áp dụng cho đơn có user)
+                if ($order->user_id && $order->points_used > 0) {
                     User::where('id', $order->user_id)->increment('point', $order->points_used);
                 }
             }
@@ -545,16 +552,19 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'new_status' => $status,
             ];
 
-            UserNotice::create([
-                'user_id' => $order->user_id,
-                'type' => 'order_status',
-                'title' => $noticeTitle,
-                'content' => $noticeContent,
-                'data' => $noticeData,
-            ]);
+            // Chỉ gửi thông báo cho user nếu đơn hàng có user_id (không phải walk-in)
+            if ($order->user_id) {
+                UserNotice::create([
+                    'user_id' => $order->user_id,
+                    'type' => 'order_status',
+                    'title' => $noticeTitle,
+                    'content' => $noticeContent,
+                    'data' => $noticeData,
+                ]);
 
-            // Send Firebase push notification to customer
-            $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+                // Send Firebase push notification to customer
+                $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+            }
 
             // Notify all admins about order status change
             $this->sendOrderNotificationToAdmins(
@@ -579,11 +589,17 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
     public function adminCreateOrder(array $data): array
     {
-        $userId = $data['user_id'];
-        $user = User::find($userId);
+        $orderType = $data['order_type'] ?? OrderType::ONLINE;
+        $userId = $data['user_id'] ?? null;
+        $user = null;
 
-        if (!$user) {
-            return ['success' => false, 'message' => 'User not found.'];
+        if ($orderType === OrderType::ONLINE) {
+            $user = User::find($userId);
+            if (!$user) {
+                return ['success' => false, 'message' => 'User not found.'];
+            }
+        } elseif ($userId) {
+            $user = User::find($userId);
         }
 
         $currency = $data['currency'];
@@ -628,9 +644,13 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $status = $data['status'] ?? OrderStatus::PENDING;
         $paymentStatus = $data['payment_status'] ?? PaymentStatus::PENDING;
 
-        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $totalAmount, $status, $paymentStatus) {
+        $orderType = $data['order_type'] ?? OrderType::ONLINE;
+
+        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $totalAmount, $status, $paymentStatus, $orderType) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
+                'order_type' => $orderType,
+                'customer_name' => $data['customer_name'] ?? null,
                 'user_id' => $userId,
                 'status' => $status,
                 'payment_status' => $paymentStatus,
@@ -643,10 +663,10 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'discount_amount' => $discountAmount,
                 'total_amount' => $totalAmount,
                 'currency' => $currency,
-                'shipping_name' => $data['shipping_name'],
+                'shipping_name' => $data['shipping_name'] ?? null,
                 'shipping_phone' => $data['shipping_phone'] ?? null,
                 'shipping_email' => $data['shipping_email'] ?? null,
-                'shipping_address' => $data['shipping_address'],
+                'shipping_address' => $data['shipping_address'] ?? null,
                 'shipping_city' => $data['shipping_city'] ?? null,
                 'shipping_country' => $data['shipping_country'] ?? null,
                 'shipping_postal_code' => $data['shipping_postal_code'] ?? null,
@@ -780,6 +800,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                 $updateData = [];
 
+                if (array_key_exists('customer_name', $data)) {
+                    $updateData['customer_name'] = $data['customer_name'];
+                }
                 if (isset($data['currency'])) {
                     $updateData['currency'] = $data['currency'];
                 }
@@ -877,15 +900,18 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'payment_status' => $paymentStatus,
         ];
 
-        UserNotice::create([
-            'user_id' => $order->user_id,
-            'type' => 'payment_status',
-            'title' => $noticeTitle,
-            'content' => $noticeContent,
-            'data' => $noticeData,
-        ]);
+        // Chỉ gửi thông báo cho user nếu đơn hàng có user_id (không phải walk-in)
+        if ($order->user_id) {
+            UserNotice::create([
+                'user_id' => $order->user_id,
+                'type' => 'payment_status',
+                'title' => $noticeTitle,
+                'content' => $noticeContent,
+                'data' => $noticeData,
+            ]);
 
-        $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+            $this->sendOrderStatusPush($order->user_id, $noticeTitle, $noticeContent, $noticeData);
+        }
 
         // Notify all admins about payment status change
         $this->sendOrderNotificationToAdmins(
@@ -919,6 +945,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
     private function addPointsForCompletedOrder(Order $order): void
     {
+        // Không cộng điểm cho đơn walk-in không có user
+        if (!$order->user_id) {
+            return;
+        }
+
         $totalAmount = (int) $order->total_amount;
         $currency = $order->currency;
 
@@ -1411,6 +1442,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'id' => $order->id,
             'order_number' => $order->order_number,
+            'order_type' => $order->order_type,
+            'customer_name' => $order->customer_name,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'payment_method' => $order->payment_method,
@@ -1469,6 +1502,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return [
             'id' => $order->id,
             'order_number' => $order->order_number,
+            'order_type' => $order->order_type,
+            'customer_name' => $order->customer_name,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'payment_method' => $order->payment_method,
