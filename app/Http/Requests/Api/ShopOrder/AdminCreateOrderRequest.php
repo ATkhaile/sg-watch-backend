@@ -27,8 +27,8 @@ class AdminCreateOrderRequest extends ApiFormRequest
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'in:JPY,VND'],
-            'payment_method' => ['required', 'string', 'in:' . implode(',', PaymentMethod::getValues())],
-            'shipping_method' => ['required', 'string', 'in:' . implode(',', ShippingMethod::getValues())],
+            'payment_method' => ['nullable', 'string', 'in:' . implode(',', PaymentMethod::getValues())],
+            'shipping_method' => ['nullable', 'string', 'in:' . implode(',', ShippingMethod::getValues())],
             'status' => ['nullable', 'string', 'in:' . implode(',', OrderStatus::getValues())],
             'payment_status' => ['nullable', 'string', 'in:' . implode(',', PaymentStatus::getValues())],
             'shipping_name' => ['nullable', 'string', 'max:255'],
@@ -41,20 +41,24 @@ class AdminCreateOrderRequest extends ApiFormRequest
             'shipping_fee' => ['nullable', 'numeric', 'min:0'],
             'cod_fee' => ['nullable', 'numeric', 'min:0'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'discount_code' => ['nullable', 'string', 'max:255'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
             'admin_note' => ['nullable', 'string', 'max:1000'],
         ];
 
-        // Đơn hàng online: bắt buộc user_id, shipping_name, shipping_address
+        // Đơn hàng online: bắt buộc user_id, shipping_name, shipping_address, payment_method, shipping_method
         if ($orderType === OrderType::ONLINE) {
             $rules['user_id'] = ['required', 'integer', 'exists:users,id'];
             $rules['customer_name'] = ['nullable', 'string', 'max:255'];
             $rules['shipping_name'] = ['required', 'string', 'max:255'];
             $rules['shipping_address'] = ['required', 'string', 'max:500'];
+            $rules['payment_method'] = ['required', 'string', 'in:' . implode(',', PaymentMethod::getValues())];
+            $rules['shipping_method'] = ['required', 'string', 'in:' . implode(',', ShippingMethod::getValues())];
         }
 
         // Đơn hàng walk-in: bắt buộc customer_name, không cần user_id
+        // payment_method mặc định là tiền mặt (cash), shipping_method mặc định là nhận tại cửa hàng (pickup)
         if ($orderType === OrderType::WALK_IN) {
             $rules['user_id'] = ['nullable', 'integer', 'exists:users,id'];
             $rules['customer_name'] = ['required', 'string', 'max:255'];

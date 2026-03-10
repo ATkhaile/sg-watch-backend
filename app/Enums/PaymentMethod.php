@@ -10,6 +10,7 @@ final class PaymentMethod extends Enum
 {
     public const BANK_TRANSFER = 'bank_transfer';
     public const COD = 'cod';
+    public const CASH = 'cash';
     public const DEPOSIT_TRANSFER = 'deposit_transfer';
     public const STRIPE = 'stripe';
 }

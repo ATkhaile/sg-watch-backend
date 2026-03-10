@@ -671,7 +671,28 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $shippingFee = (int) ($data['shipping_fee'] ?? 0);
         $codFee = (int) ($data['cod_fee'] ?? 0);
         $depositAmount = (int) ($data['deposit_amount'] ?? 0);
-        $discountAmount = (int) ($data['discount_amount'] ?? 0);
+
+        // Xử lý discount code hoặc discount_amount
+        $discountCode = null;
+        $discountAmount = 0;
+        if (!empty($data['discount_code'])) {
+            $discountCode = DiscountCode::where('code', $data['discount_code'])
+                ->where('is_active', true)
+                ->where('quantity', '>', 0)
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->first();
+
+            if (!$discountCode) {
+                return ['success' => false, 'message' => 'Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng.'];
+            }
+
+            $discountAmount = (int) floor($subtotal * $discountCode->percentage / 100);
+        } else {
+            $discountAmount = (int) ($data['discount_amount'] ?? 0);
+        }
+
         $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount;
 
         $status = $data['status'] ?? OrderStatus::PENDING;
@@ -679,7 +700,13 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         $orderType = $data['order_type'] ?? OrderType::ONLINE;
 
-        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $totalAmount, $status, $paymentStatus, $orderType) {
+        // Walk-in: mặc định payment_method là tiền mặt, shipping_method là nhận tại cửa hàng
+        if ($orderType === OrderType::WALK_IN) {
+            $data['payment_method'] = $data['payment_method'] ?? PaymentMethod::CASH;
+            $data['shipping_method'] = $data['shipping_method'] ?? ShippingMethod::PICKUP;
+        }
+
+        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountCode, $discountAmount, $totalAmount, $status, $paymentStatus, $orderType) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'order_type' => $orderType,
@@ -693,6 +720,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'shipping_fee' => $shippingFee,
                 'cod_fee' => $codFee,
                 'deposit_amount' => $depositAmount,
+                'coupon_code' => $discountCode?->code,
+                'discount_code_id' => $discountCode?->id,
                 'discount_amount' => $discountAmount,
                 'total_amount' => $totalAmount,
                 'currency' => $currency,
@@ -725,6 +754,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                 Product::where('id', $product->id)
                     ->decrement('stock_quantity', $item['quantity']);
+            }
+
+            // Giảm số lượt sử dụng discount code
+            if ($discountCode) {
+                $discountCode->decrement('quantity', 1);
             }
 
             $order->load('items.product.category', 'items.product.brand', 'user:id,uuid,first_name,last_name,email');
