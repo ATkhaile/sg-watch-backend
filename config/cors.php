@@ -21,7 +21,7 @@ return [
 
     'allowed_origins' => [
         // local
-        // 'http://localhost:3000',
+        'https://admin.sgwatch.jp',
         // 'http://localhost:3001',
         // 'http://localhost:3002',
         // 'http://app.elc-dev.local',
