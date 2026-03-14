@@ -42,6 +42,7 @@ class Product extends Model
         'is_active',
         'is_featured',
         'is_domestic',
+        'is_new',
         'sale_percent',
         'sort_order',
         'display_order',
@@ -64,6 +65,7 @@ class Product extends Model
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'is_domestic' => 'boolean',
+            'is_new' => 'boolean',
         ];
     }
 

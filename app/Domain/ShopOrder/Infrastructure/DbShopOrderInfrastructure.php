@@ -219,7 +219,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         });
     }
 
-    public function getList(int $userId, ?string $status, int $perPage): array
+    public function getList(int $userId, ?string $status, int $perPage, ?bool $isNew = null): array
     {
         $query = Order::where('user_id', $userId)
             ->with(['items.product.category', 'items.product.brand'])
@@ -227,6 +227,14 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+        if ($isNew !== null) {
+            $query->whereHas('items', function ($iq) use ($isNew) {
+                $iq->whereHas('product', function ($pq) use ($isNew) {
+                    $pq->where('is_new', $isNew);
+                });
+            });
         }
 
         $paginator = $query->paginate($perPage);
@@ -382,6 +390,15 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $query->whereHas('items', function ($iq) use ($filters) {
                 $iq->whereHas('product', function ($pq) use ($filters) {
                     $pq->where('category_id', $filters['category_id']);
+                });
+            });
+        }
+
+        // Filter by is_new (through order items -> product)
+        if (isset($filters['is_new'])) {
+            $query->whereHas('items', function ($iq) use ($filters) {
+                $iq->whereHas('product', function ($pq) use ($filters) {
+                    $pq->where('is_new', $filters['is_new']);
                 });
             });
         }
@@ -1565,6 +1582,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     'name' => $item->product->category->name,
                     'slug' => $item->product->category->slug,
                 ] : null,
+                'is_new' => $item->product?->is_new ?? true,
                 'brand' => $item->product?->brand ? [
                     'id' => $item->product->brand->id,
                     'name' => $item->product->brand->name,

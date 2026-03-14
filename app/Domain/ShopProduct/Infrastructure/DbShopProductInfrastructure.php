@@ -70,6 +70,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $query->where('is_domestic', $filters['is_domestic']);
         }
 
+        // Filter by is_new
+        if (isset($filters['is_new'])) {
+            $query->where('is_new', $filters['is_new']);
+        }
+
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         switch ($sortBy) {
@@ -166,6 +171,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
             'is_domestic' => $product->is_domestic,
+            'is_new' => $product->is_new,
             'sale_percent' => $product->sale_percent,
             'attributes' => $product->attributes,
             'display_order' => $product->display_order,
@@ -232,6 +238,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'warranty_months' => $product->warranty_months,
             'is_featured' => $product->is_featured,
             'is_domestic' => $product->is_domestic,
+            'is_new' => $product->is_new,
             'sale_percent' => $product->sale_percent,
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
@@ -314,6 +321,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
         // Filter by is_domestic
         if (isset($filters['is_domestic'])) {
             $query->where('is_domestic', $filters['is_domestic']);
+        }
+
+        // Filter by is_new
+        if (isset($filters['is_new'])) {
+            $query->where('is_new', $filters['is_new']);
         }
 
         // Filter by in stock
@@ -556,6 +568,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'stock_type' => $product->stock_type,
             'is_featured' => $product->is_featured,
             'is_domestic' => $product->is_domestic,
+            'is_new' => $product->is_new,
             'sale_percent' => $product->sale_percent,
             'attributes' => $product->attributes,
             'display_order' => $product->display_order,
@@ -635,6 +648,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'is_domestic' => $product->is_domestic,
+            'is_new' => $product->is_new,
             'sale_percent' => $product->sale_percent,
             'sort_order' => $product->sort_order,
             'display_order' => $product->display_order,

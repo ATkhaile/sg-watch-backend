@@ -26,8 +26,9 @@ class GetOrderListAction extends BaseController
         $userId = (int) auth()->user()->id;
         $status = $request->validated('status');
         $perPage = (int) ($request->validated('per_page') ?? 15);
+        $isNew = $request->validated('is_new') !== null ? (bool) $request->validated('is_new') : null;
 
-        $result = $this->useCase->__invoke($userId, $status, $perPage);
+        $result = $this->useCase->__invoke($userId, $status, $perPage, $isNew);
 
         return $this->responder->__invoke($result);
     }

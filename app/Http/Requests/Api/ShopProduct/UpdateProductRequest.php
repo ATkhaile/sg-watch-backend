@@ -45,6 +45,7 @@ class UpdateProductRequest extends ApiFormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'is_domestic' => ['nullable', 'boolean'],
+            'is_new' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
             'existing_image_ids' => ['nullable', 'array'],
             'existing_image_ids.*' => ['integer'],

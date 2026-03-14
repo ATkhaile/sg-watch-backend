@@ -23,6 +23,7 @@ class GetProductListRequest extends ApiFormRequest
             'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
             'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
             'is_domestic' => ['nullable', 'boolean'],
+            'is_new' => ['nullable', 'boolean'],
             'sort_by' => ['nullable', 'string', 'in:newest,display_order,price_asc,price_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];

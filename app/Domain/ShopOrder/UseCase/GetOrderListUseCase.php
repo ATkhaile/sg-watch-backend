@@ -13,8 +13,8 @@ final class GetOrderListUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(int $userId, ?string $status, int $perPage): array
+    public function __invoke(int $userId, ?string $status, int $perPage, ?bool $isNew = null): array
     {
-        return $this->repository->getList($userId, $status, $perPage);
+        return $this->repository->getList($userId, $status, $perPage, $isNew);
     }
 }

@@ -43,6 +43,7 @@ class CreateProductRequest extends ApiFormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'is_domestic' => ['nullable', 'boolean'],
+            'is_new' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
             'images' => ['nullable', 'array'],
             'images.*' => ['sometimes', 'file', 'image', 'max:5120'],

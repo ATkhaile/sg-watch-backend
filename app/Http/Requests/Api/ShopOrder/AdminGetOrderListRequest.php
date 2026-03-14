@@ -28,6 +28,7 @@ class AdminGetOrderListRequest extends ApiFormRequest
             'payment_method' => ['nullable', 'string', 'in:' . implode(',', PaymentMethod::getValues())],
             'brand_id' => ['nullable', 'integer', 'exists:shop_brands,id'],
             'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
+            'is_new' => ['nullable', 'boolean'],
             'date_from' => ['nullable', 'date', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'sort_by' => ['nullable', 'string', 'in:newest,oldest,total_asc,total_desc'],
