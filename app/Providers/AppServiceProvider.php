@@ -60,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
         // Discount Code
         $this->app->register(\App\Providers\Domain\DiscountCodeDomainProvider::class);
 
+        // Big Sale
+        $this->app->register(\App\Providers\Domain\BigSaleDomainProvider::class);
+
         // Notice
         $this->app->register(\App\Providers\Domain\NoticeDomainProvider::class);
 
