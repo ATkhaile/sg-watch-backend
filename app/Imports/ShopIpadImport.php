@@ -7,32 +7,26 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 
-class ShopComputerImport implements ToModel, WithStartRow
+class ShopIpadImport implements ToModel, WithStartRow
 {
   private ?int $categoryId;
   private ?int $brandId;
   private int $nextDisplayOrder = 1;
 
   // Thứ tự cột trong file Excel (bắt đầu từ 0)
-  private const COL_TEN_LAPTOP         = 3;
-  private const COL_MA_SAN_PHAM        = 4;
-  private const COL_NAM_SAN_XUAT       = 5;
-  private const COL_MAU_MAY            = 6;
-  private const COL_MO_TA_NGAN         = 7;
-  private const COL_THONG_TIN_SP       = 8;
-  private const COL_MO_TA_CHI_TIET     = 9;
-  private const COL_GPU                = 10;
-  private const COL_CONG_KET_NOI       = 11;
-  private const COL_TONG_QUAN          = 12;
-  private const COL_KHACH_HANG         = 13;
-  private const COL_TRONG_LUONG        = 14;
-  private const COL_PIN                = 15;
-  private const COL_GIA_BAN_YEN        = 16;
-  private const COL_GIA_NHAP_YEN       = 17;
-  private const COL_GIA_NIEM_YET_YEN   = 18;
-  private const COL_POINT              = 19;
-  private const COL_SO_LUONG           = 20;
-
+  private const COL_TEN_MAY            = 1;
+  private const COL_NAM_SAN_XUAT       = 2;
+  private const COL_MAU_MAY            = 3;
+  private const COL_MO_TA_NGAN         = 4;
+  private const COL_THONG_TIN_SP       = 5;
+  private const COL_MO_TA_CHI_TIET     = 6;
+  private const COL_BAO_MAT            = 7;
+  private const COL_PIN                = 8;
+  private const COL_GIA_BAN_YEN        = 9;
+  private const COL_GIA_NIEM_YET_YEN   = 10;
+  private const COL_GIA_NHAP_YEN       = 11;
+  private const COL_POINT              = 12;
+  private const COL_SO_LUONG           = 13;
 
   public function __construct(?int $categoryId = null, ?int $brandId = null)
   {
@@ -50,36 +44,23 @@ class ShopComputerImport implements ToModel, WithStartRow
 
   public function model(array $row)
   {
-    $name = $this->val($row, self::COL_TEN_LAPTOP);
-    $sku  = $this->val($row, self::COL_MA_SAN_PHAM);
+    $name = $this->val($row, self::COL_TEN_MAY);
 
-    // Bỏ qua row nếu không có tên và mã sản phẩm
-    if (!$name && !$sku) {
+    // Bỏ qua row nếu không có tên
+    if (!$name) {
       return null;
     }
 
-    // Nếu SKU đã tồn tại thì bỏ qua
-    if ($sku && Product::where('sku', $sku)->exists()) {
-      return null;
-    }
-    // Nếu không có SKU thì tự sinh
-    if (!$sku) {
-      $sku = 'PC-' . strtoupper(Str::random(8));
-    }
+    $sku = 'IPAD-' . strtoupper(Str::random(8));
 
     $priceJpy = $this->parsePrice($this->val($row, self::COL_GIA_BAN_YEN));
     $originalPriceJpy = $this->parsePrice($this->val($row, self::COL_GIA_NIEM_YET_YEN));
     $costPriceJpy = $this->parsePrice($this->val($row, self::COL_GIA_NHAP_YEN));
 
-    // Gom các thông tin riêng của laptop vào attributes
     $attributes = array_filter([
       'year' => $this->val($row, self::COL_NAM_SAN_XUAT),
       'color' => $this->val($row, self::COL_MAU_MAY),
-      'gpu' => $this->val($row, self::COL_GPU),
-      'ports' => $this->val($row, self::COL_CONG_KET_NOI),
-      'overview' => $this->val($row, self::COL_TONG_QUAN),
-      'target_customer' => $this->val($row, self::COL_KHACH_HANG),
-      'weight' => $this->val($row, self::COL_TRONG_LUONG),
+      'security' => $this->val($row, self::COL_BAO_MAT),
       'battery' => $this->val($row, self::COL_PIN),
     ], fn($v) => $v !== null && $v !== '');
 

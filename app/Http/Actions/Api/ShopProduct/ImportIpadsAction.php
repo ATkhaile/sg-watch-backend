@@ -3,27 +3,27 @@
 namespace App\Http\Actions\Api\ShopProduct;
 
 use App\Http\Controllers\BaseController;
-use App\Imports\ShopComputerImport;
-use App\Http\Requests\Api\ShopProduct\ImportComputersRequest;
+use App\Imports\ShopIpadImport;
+use App\Http\Requests\Api\ShopProduct\ImportIpadsRequest;
 use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
 
-class ImportComputersAction extends BaseController
+class ImportIpadsAction extends BaseController
 {
-  public function __invoke(ImportComputersRequest $request): JsonResponse
+  public function __invoke(ImportIpadsRequest $request): JsonResponse
   {
-    // $data = Excel::toArray(new ShopComputerImport($request->input('category_id'), $request->input('brand_id')), $request->file('file'));
+    // $data = Excel::toArray(new ShopIpadImport($request->input('category_id'), $request->input('brand_id')), $request->file('file'));
     // dd($data);
 
     try {
       Excel::import(
-        new ShopComputerImport($request->input('category_id'), $request->input('brand_id')),
+        new ShopIpadImport($request->input('category_id'), $request->input('brand_id')),
         $request->file('file')
       );
 
       return response()->json([
         'status' => 'success',
-        'message' => 'Import máy tính thành công.',
+        'message' => 'Import iPad thành công.',
         'code' => 200,
       ], 200);
     } catch (\Exception $e) {

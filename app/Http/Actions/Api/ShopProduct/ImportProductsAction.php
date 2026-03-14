@@ -18,7 +18,7 @@ class ImportProductsAction extends BaseController
    */
   public function __invoke(ImportProductsRequest $request): JsonResponse
   {
-    // $data = Excel::toArray(new ShopProductImport, $request->file('file'));
+    // $data = Excel::toArray(new ShopProductImport($request->input('category_id'), $request->input('brand_id')), $request->file('file'));
     // dd($data);
 
     try {
