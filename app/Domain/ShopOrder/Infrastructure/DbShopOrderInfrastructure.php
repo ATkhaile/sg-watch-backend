@@ -1034,33 +1034,46 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return;
         }
 
-        $totalAmount = (int) $order->total_amount;
-        $currency = $order->currency;
-
-        if ($currency !== 'JPY') {
+        if ($order->currency !== 'JPY') {
             return;
         }
 
-        if ($totalAmount >= 100000) {
-            $points = 2000;
-        } elseif ($totalAmount >= 50000) {
-            $points = 1000;
-        } else {
-            $points = 500;
+        $totalPoints = 0;
+
+        foreach ($order->items as $item) {
+            $product = $item->product;
+            if (!$product || !$product->cost_price_jpy) {
+                continue;
+            }
+
+            $profit = (int) $product->price_jpy - (int) $product->cost_price_jpy;
+
+            if ($profit > 12000) {
+                $itemPoints = 1000;
+            } elseif ($profit >= 10000) {
+                $itemPoints = 500;
+            } else {
+                $itemPoints = 200;
+            }
+
+            $itemPoints *= $item->quantity;
+            $totalPoints += $itemPoints;
+
+            PointHistory::create([
+                'user_id'             => $order->user_id,
+                'point'               => $itemPoints,
+                'remaining_point'     => $itemPoints,
+                'memo'                => 'Order bonus #' . $order->order_number . ' - ' . $product->name,
+                'point_type'          => PointMasterType::ORDER_BONUS,
+                'last_update_user_id' => $order->user_id,
+                'expired_at'          => Carbon::now()->addMonths(6),
+            ]);
         }
 
-        PointHistory::create([
-            'user_id'             => $order->user_id,
-            'point'               => $points,
-            'remaining_point'     => $points,
-            'memo'                => 'Order bonus #' . $order->order_number,
-            'point_type'          => PointMasterType::ORDER_BONUS,
-            'last_update_user_id' => $order->user_id,
-            'expired_at'          => Carbon::now()->addMonths(6),
-        ]);
-
-        PointHistory::syncUserPoint($order->user_id);
-        $order->update(['points_earned' => $points]);
+        if ($totalPoints > 0) {
+            PointHistory::syncUserPoint($order->user_id);
+            $order->update(['points_earned' => $totalPoints]);
+        }
     }
 
     private function getVietnameseStatusLabel(string $status): string
