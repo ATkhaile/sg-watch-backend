@@ -14,6 +14,9 @@ class ShopComputerImport implements ToModel, WithStartRow
   private int $nextDisplayOrder = 1;
 
   // Thứ tự cột trong file Excel (bắt đầu từ 0)
+  // A:STT | B:Danh mục | C:Hãng | D:Tên Laptop | E:Mã SP | F:Năm SX | G:Màu | H:Mô tả ngắn
+  // I:Thông tin SP | J:Mô tả chi tiết | K:GPU | L:Cổng kết nối | M:Hướng tới KH | N:Pin
+  // O:Thiết kế | P:Giá bán | Q:Giá niêm yết | R:Giá nhập | S:Point | T:Số lượng | U:Ảnh
   private const COL_TEN_LAPTOP         = 3;
   private const COL_MA_SAN_PHAM        = 4;
   private const COL_NAM_SAN_XUAT       = 5;
@@ -23,15 +26,14 @@ class ShopComputerImport implements ToModel, WithStartRow
   private const COL_MO_TA_CHI_TIET     = 9;
   private const COL_GPU                = 10;
   private const COL_CONG_KET_NOI       = 11;
-  private const COL_TONG_QUAN          = 12;
-  private const COL_KHACH_HANG         = 13;
-  private const COL_TRONG_LUONG        = 14;
-  private const COL_PIN                = 15;
-  private const COL_GIA_BAN_YEN        = 16;
+  private const COL_KHACH_HANG         = 12;
+  private const COL_PIN                = 13;
+  private const COL_THIET_KE           = 14;
+  private const COL_GIA_BAN_YEN        = 15;
+  private const COL_GIA_NIEM_YET_YEN   = 16;
   private const COL_GIA_NHAP_YEN       = 17;
-  private const COL_GIA_NIEM_YET_YEN   = 18;
-  private const COL_POINT              = 19;
-  private const COL_SO_LUONG           = 20;
+  private const COL_POINT              = 18;
+  private const COL_SO_LUONG           = 19;
 
 
   public function __construct(?int $categoryId = null, ?int $brandId = null)
@@ -77,10 +79,9 @@ class ShopComputerImport implements ToModel, WithStartRow
       'color' => $this->val($row, self::COL_MAU_MAY),
       'gpu' => $this->val($row, self::COL_GPU),
       'ports' => $this->val($row, self::COL_CONG_KET_NOI),
-      'overview' => $this->val($row, self::COL_TONG_QUAN),
       'target_customer' => $this->val($row, self::COL_KHACH_HANG),
-      'weight' => $this->val($row, self::COL_TRONG_LUONG),
       'battery' => $this->val($row, self::COL_PIN),
+      'design' => $this->val($row, self::COL_THIET_KE),
     ], fn($v) => $v !== null && $v !== '');
 
     return new Product([
