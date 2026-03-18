@@ -34,6 +34,8 @@ class ShopProductImport implements ToModel, WithStartRow
   private const COL_SO_LUONG             = 17;
   private const COL_BAO_HANH             = 18;
   private const COL_ANH                  = 19;
+  private const COL_MA_MAU               = 20;
+  private const COL_MAU                  = 21;
 
   public function __construct(int $categoryId, int $brandId)
   {
@@ -79,6 +81,14 @@ class ShopProductImport implements ToModel, WithStartRow
     $stockType = $this->mapStockType($this->val($row, self::COL_HANG_ORDER));
     $condition = $this->mapCondition($this->val($row, self::COL_TINH_TRANG));
     $thongSoKyThuat = $this->val($row, self::COL_THONG_SO_KY_THUAT);
+    $colorCode = $this->val($row, self::COL_MA_MAU);
+    $color = $this->val($row, self::COL_MAU);
+
+    $attributes = array_filter([
+      'thong_so_ky_thuat' => $thongSoKyThuat,
+      'color_code' => $colorCode,
+      'color' => $color,
+    ]);
 
     return new Product([
       'category_id' => $this->categoryId,
@@ -90,7 +100,7 @@ class ShopProductImport implements ToModel, WithStartRow
       'description' => $this->val($row, self::COL_GOI_Y_SU_DUNG),
       'product_info' => $this->val($row, self::COL_THONG_TIN_SP),
       'deal_info' => $this->val($row, self::COL_KHUYEN_MAI),
-      'attributes' => $thongSoKyThuat ? ['thong_so_ky_thuat' => $thongSoKyThuat] : null,
+      'attributes' => !empty($attributes) ? $attributes : null,
       'price_jpy' => $priceJpy,
       'original_price_jpy' => $originalPriceJpy > 0 ? $originalPriceJpy : null,
       'cost_price_jpy' => $costPriceJpy > 0 ? $costPriceJpy : null,
