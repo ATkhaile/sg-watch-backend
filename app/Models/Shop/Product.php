@@ -97,6 +97,12 @@ class Product extends Model
                     ? (int) round((($original - $selling) / $original) * 100)
                     : null;
             }
+            if ($product->isDirty('price_jpy') || $product->isDirty('cost_price_jpy')) {
+                $product->points = self::calculatePoints(
+                    (int) $product->price_jpy,
+                    (int) $product->cost_price_jpy
+                );
+            }
         });
     }
 
@@ -165,5 +171,22 @@ class Product extends Model
     public function isInStock(): bool
     {
         return $this->stock_quantity > 0;
+    }
+
+    public static function calculatePoints(int $priceJpy, int $costPriceJpy): int
+    {
+        if (!$priceJpy || !$costPriceJpy) {
+            return 0;
+        }
+
+        $profit = $priceJpy - $costPriceJpy;
+
+        if ($profit > 12000) {
+            return 1000;
+        } elseif ($profit >= 10000) {
+            return 500;
+        }
+
+        return 200;
     }
 }

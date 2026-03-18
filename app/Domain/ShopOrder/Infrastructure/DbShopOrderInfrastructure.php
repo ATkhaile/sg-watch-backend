@@ -1042,21 +1042,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         foreach ($order->items as $item) {
             $product = $item->product;
-            if (!$product || !$product->cost_price_jpy) {
+            if (!$product || !$product->points) {
                 continue;
             }
 
-            $profit = (int) $product->price_jpy - (int) $product->cost_price_jpy;
-
-            if ($profit > 12000) {
-                $itemPoints = 1000;
-            } elseif ($profit >= 10000) {
-                $itemPoints = 500;
-            } else {
-                $itemPoints = 200;
-            }
-
-            $itemPoints *= $item->quantity;
+            $itemPoints = $product->points * $item->quantity;
             $totalPoints += $itemPoints;
 
             PointHistory::create([

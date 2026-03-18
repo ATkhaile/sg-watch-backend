@@ -76,7 +76,6 @@ class ShopIpadImport implements ToModel, WithStartRow
       'price_jpy' => $priceJpy,
       'original_price_jpy' => $originalPriceJpy > 0 ? $originalPriceJpy : null,
       'cost_price_jpy' => $costPriceJpy > 0 ? $costPriceJpy : null,
-      'points' => (int) ($this->val($row, self::COL_POINT) ?? 0),
       'stock_quantity' => (int) ($this->val($row, self::COL_SO_LUONG) ?? 0),
       'attributes' => !empty($attributes) ? $attributes : null,
       'is_active' => true,

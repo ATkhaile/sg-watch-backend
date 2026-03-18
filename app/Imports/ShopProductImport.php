@@ -92,7 +92,6 @@ class ShopProductImport implements ToModel, WithStartRow
       'price_jpy' => $priceJpy,
       'original_price_jpy' => $originalPriceJpy > 0 ? $originalPriceJpy : null,
       'cost_price_jpy' => $costPriceJpy > 0 ? $costPriceJpy : null,
-      'points' => 0,
       'gender' => $gender,
       'movement_type' => $this->mapMovementType((string) $this->val($row, self::COL_LOAI_MAY)),
       'stock_quantity' => (int) ($this->val($row, self::COL_SO_LUONG) ?? 0),

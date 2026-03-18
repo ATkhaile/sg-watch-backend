@@ -32,7 +32,6 @@ class ShopComputerImport implements ToModel, WithStartRow
   private const COL_GIA_BAN_YEN        = 15;
   private const COL_GIA_NIEM_YET_YEN   = 16;
   private const COL_GIA_NHAP_YEN       = 17;
-  private const COL_POINT              = 18;
   private const COL_SO_LUONG           = 19;
 
 
@@ -96,7 +95,6 @@ class ShopComputerImport implements ToModel, WithStartRow
       'price_jpy' => $priceJpy,
       'original_price_jpy' => $originalPriceJpy > 0 ? $originalPriceJpy : null,
       'cost_price_jpy' => $costPriceJpy > 0 ? $costPriceJpy : null,
-      'points' => (int) ($this->val($row, self::COL_POINT) ?? 0),
       'stock_quantity' => (int) ($this->val($row, self::COL_SO_LUONG) ?? 0),
       'attributes' => !empty($attributes) ? $attributes : null,
       'is_active' => true,
