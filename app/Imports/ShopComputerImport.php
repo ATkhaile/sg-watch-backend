@@ -40,8 +40,10 @@ class ShopComputerImport implements ToModel, WithStartRow
     $this->categoryId = $categoryId;
     $this->brandId = $brandId;
 
-    $maxOrder = Product::withTrashed()->max('display_order') ?? 0;
-    $this->nextDisplayOrder = $maxOrder + 1;
+    $query = $this->brandId
+        ? Product::withTrashed()->where('brand_id', $this->brandId)
+        : Product::withTrashed()->where('category_id', $this->categoryId);
+    $this->nextDisplayOrder = ($query->max('display_order') ?? 0) + 1;
   }
 
   public function startRow(): int

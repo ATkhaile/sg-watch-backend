@@ -77,7 +77,10 @@ class Product extends Model
     {
         static::creating(function (Product $product) {
             if (!$product->display_order) {
-                $product->display_order = (Product::max('display_order') ?? 0) + 1;
+                $query = $product->brand_id
+                    ? Product::where('brand_id', $product->brand_id)
+                    : Product::where('category_id', $product->category_id);
+                $product->display_order = ($query->max('display_order') ?? 0) + 1;
             }
         });
 

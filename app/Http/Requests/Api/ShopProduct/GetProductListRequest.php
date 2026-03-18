@@ -14,17 +14,19 @@ class GetProductListRequest extends ApiFormRequest
 
     public function rules(): array
     {
+        $isSortByDisplayOrder = $this->input('sort_by') === 'display_order';
+
         return [
             'keyword' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'in:male,female,unisex,couple'],
-            'brand_id' => ['nullable', 'integer', 'exists:shop_brands,id'],
             'movement_type' => ['nullable', 'string', 'in:quartz,automatic,manual,solar,kinetic'],
             'in_stock' => ['nullable', 'boolean'],
             'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
-            'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
+            'category_id' => [$isSortByDisplayOrder ? 'required_without:brand_id' : 'nullable', 'integer', 'exists:shop_categories,id'],
             'is_domestic' => ['nullable', 'boolean'],
             'is_new' => ['nullable', 'boolean'],
             'sort_by' => ['nullable', 'string', 'in:newest,display_order,price_asc,price_desc'],
+            'brand_id' => [$isSortByDisplayOrder ? 'required_without:category_id' : 'nullable', 'integer', 'exists:shop_brands,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }

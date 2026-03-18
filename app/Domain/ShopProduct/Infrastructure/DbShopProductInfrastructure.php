@@ -500,8 +500,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $product = Product::findOrFail($productId);
             $oldDisplayOrder = $product->display_order;
 
-            // Find the product currently at the target position
-            $targetProduct = Product::where('display_order', $newDisplayOrder)->first();
+            // Find the product currently at the target position within the same brand/category
+            $scopeQuery = $product->brand_id
+                ? Product::where('brand_id', $product->brand_id)
+                : Product::where('category_id', $product->category_id);
+            $targetProduct = $scopeQuery->where('display_order', $newDisplayOrder)->first();
 
             if ($targetProduct) {
                 // Use temporary value to avoid unique constraint violation

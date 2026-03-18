@@ -40,7 +40,9 @@ class ShopProductImport implements ToModel, WithStartRow
     $this->categoryId = $categoryId;
     $this->brandId = $brandId;
 
-    $maxOrder = Product::withTrashed()->max('display_order') ?? 0;
+    $maxOrder = Product::withTrashed()
+        ->where('brand_id', $this->brandId)
+        ->max('display_order') ?? 0;
     $this->nextDisplayOrder = $maxOrder + 1;
   }
 
