@@ -21,6 +21,7 @@ class CreateProductRequest extends ApiFormRequest
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['required', 'string', 'max:100', 'unique:shop_products,sku'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:shop_products,slug'],
+            'primary_image' => ['nullable', 'file', 'image', 'max:5120'],
             'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
             'brand_id' => ['nullable', 'integer', 'exists:shop_brands,id'],
             'short_description' => ['nullable', 'string', 'max:500'],
@@ -49,7 +50,6 @@ class CreateProductRequest extends ApiFormRequest
             'images.*' => ['sometimes', 'file', 'image', 'max:5120'],
             'images.*.image_url' => ['sometimes', 'string', 'max:500'],
             'images.*.alt_text' => ['nullable', 'string', 'max:255'],
-            'images.*.is_primary' => ['nullable', 'boolean'],
             'images.*.sort_order' => ['nullable', 'integer'],
         ];
     }

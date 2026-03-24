@@ -22,6 +22,7 @@ class Product extends Model
         'name',
         'slug',
         'sku',
+        'primary_image',
         'short_description',
         'description',
         'product_info',
@@ -115,10 +116,7 @@ class Product extends Model
 
     public function getPrimaryImageUrlAttribute(): ?string
     {
-        $imageUrl = $this->images()->where('is_primary', true)->value('image_url')
-            ?? $this->images()->orderBy('sort_order')->value('image_url');
-
-        return $imageUrl ? CommonComponent::getFullUrl($imageUrl) : null;
+        return $this->primary_image ? CommonComponent::getFullUrl($this->primary_image) : null;
     }
 
     // =========================================================================
@@ -142,7 +140,7 @@ class Product extends Model
 
     public function primaryImage(): HasOne
     {
-        return $this->hasOne(ProductImage::class, 'product_id')->where('is_primary', true);
+        return $this->hasOne(ProductImage::class, 'product_id')->orderBy('sort_order');
     }
 
     public function reviews(): HasMany

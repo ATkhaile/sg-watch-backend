@@ -178,7 +178,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
-            'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
+            'primary_image_url' => $product->primary_image_url,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
@@ -262,7 +262,6 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'images' => $product->images->map(fn ($img) => [
                 'id' => $img->id,
                 'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
-                'is_primary' => $img->is_primary,
                 'sort_order' => $img->sort_order,
             ])->toArray(),
             'reviews' => $product->approvedReviews->map(fn ($review) => [
@@ -399,13 +398,20 @@ class DbShopProductInfrastructure implements ShopProductRepository
     {
         return DB::transaction(function () use ($data) {
             $images = $data['images'] ?? [];
-            unset($data['images']);
+            $primaryImage = $data['primary_image'] ?? null;
+            unset($data['images'], $data['primary_image']);
 
             if (empty($data['slug'])) {
                 $data['slug'] = Str::slug($data['name']) . '-' . Str::random(6);
             }
 
             $product = Product::create($data);
+
+            if ($primaryImage instanceof UploadedFile) {
+                $product->update([
+                    'primary_image' => $primaryImage->store('products/' . $product->id, 'public'),
+                ]);
+            }
 
             $this->syncImages($product, $images);
 
@@ -430,10 +436,19 @@ class DbShopProductInfrastructure implements ShopProductRepository
         return DB::transaction(function () use ($product, $data) {
             $newImages = $data['images'] ?? null;
             $existingImageIds = $data['existing_image_ids'] ?? [];
-            unset($data['images'], $data['existing_image_ids']);
+            $primaryImage = $data['primary_image'] ?? null;
+            unset($data['images'], $data['existing_image_ids'], $data['primary_image']);
 
             if (isset($data['slug']) && empty($data['slug'])) {
                 $data['slug'] = Str::slug($data['name'] ?? $product->name) . '-' . Str::random(6);
+            }
+
+            if ($primaryImage instanceof UploadedFile) {
+                // Delete old primary image
+                if ($product->primary_image) {
+                    Storage::disk('public')->delete($product->primary_image);
+                }
+                $data['primary_image'] = $primaryImage->store('products/' . $product->id, 'public');
             }
 
             $product->update($data);
@@ -453,14 +468,13 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 // Upload new images
                 if ($newImages) {
                     $startSort = ($product->images()->max('sort_order') ?? -1) + 1;
-                    $hasPrimary = $product->images()->where('is_primary', true)->exists();
                     foreach ($newImages as $index => $image) {
                         if ($image instanceof UploadedFile) {
                             ProductImage::create([
                                 'product_id' => $product->id,
                                 'image_url' => $image->store('products/' . $product->id, 'public'),
                                 'alt_text' => null,
-                                'is_primary' => !$hasPrimary && $index === 0,
+                                'is_primary' => false,
                                 'sort_order' => $startSort + $index,
                             ]);
                         }
@@ -578,7 +592,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
-            'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
+            'primary_image_url' => $product->primary_image_url,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
@@ -599,7 +613,6 @@ class DbShopProductInfrastructure implements ShopProductRepository
             if ($image instanceof UploadedFile) {
                 $imageUrl = $image->store('products/' . $product->id, 'public');
                 $altText = null;
-                $isPrimary = $index === 0;
                 $sortOrder = $index;
             } elseif (is_array($image)) {
                 if (isset($image['image_url']) && $image['image_url'] instanceof UploadedFile) {
@@ -608,7 +621,6 @@ class DbShopProductInfrastructure implements ShopProductRepository
                     $imageUrl = $image['image_url'] ?? '';
                 }
                 $altText = $image['alt_text'] ?? null;
-                $isPrimary = $image['is_primary'] ?? ($index === 0);
                 $sortOrder = $image['sort_order'] ?? $index;
             } else {
                 continue;
@@ -618,7 +630,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 'product_id' => $product->id,
                 'image_url' => $imageUrl,
                 'alt_text' => $altText,
-                'is_primary' => $isPrimary,
+                'is_primary' => false,
                 'sort_order' => $sortOrder,
             ]);
         }
@@ -631,6 +643,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'name' => $product->name,
             'slug' => $product->slug,
             'sku' => $product->sku,
+            'primary_image_url' => $product->primary_image ? CommonComponent::getFullUrl($product->primary_image) : null,
             'short_description' => $product->short_description,
             'description' => $product->description,
             'product_info' => $product->product_info,
@@ -669,7 +682,6 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 'id' => $img->id,
                 'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
                 'alt_text' => $img->alt_text,
-                'is_primary' => $img->is_primary,
                 'sort_order' => $img->sort_order,
             ])->toArray(),
             'created_at' => $product->created_at?->toIso8601String(),

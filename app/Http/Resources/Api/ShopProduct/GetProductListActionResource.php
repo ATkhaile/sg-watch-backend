@@ -40,7 +40,7 @@ class GetProductListActionResource extends JsonResource
                         'display_order' => $product->display_order,
                         'average_rating' => $product->average_rating,
                         'review_count' => $product->review_count,
-                        'primary_image_url' => $product->primary_image_url ? CommonComponent::getFullUrl($product->primary_image_url) : null,
+                        'primary_image_url' => $product->primary_image_url,
                         'is_favorited' => in_array($product->id, $favoritedProductIds),
                         'is_purchased' => in_array($product->id, $purchasedProductIds),
                         'brand' => $product->brand ? [

@@ -23,6 +23,7 @@ class UpdateProductRequest extends ApiFormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'sku' => ['sometimes', 'string', 'max:100', 'unique:shop_products,sku,' . $productId],
             'slug' => ['nullable', 'string', 'max:255', 'unique:shop_products,slug,' . $productId],
+            'primary_image' => ['nullable', 'file', 'image', 'max:5120'],
             'category_id' => ['nullable', 'integer', 'exists:shop_categories,id'],
             'brand_id' => ['nullable', 'integer', 'exists:shop_brands,id'],
             'short_description' => ['nullable', 'string', 'max:500'],
