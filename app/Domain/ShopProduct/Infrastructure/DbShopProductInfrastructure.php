@@ -220,6 +220,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'name' => $product->name,
             'slug' => $product->slug,
             'sku' => $product->sku,
+            'primary_image_url' => $product->primary_image_url,
             'short_description' => $product->short_description,
             'description' => $product->description,
             'product_info' => $product->product_info,
