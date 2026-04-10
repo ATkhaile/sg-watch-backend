@@ -22,6 +22,7 @@ use App\Models\PusherInfo;
 use App\Models\PointHistory;
 use App\Enums\PushType;
 use App\Enums\PointMasterType;
+use App\Enums\StockType;
 use GuzzleHttp\Client;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -174,6 +175,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                 Product::where('id', $product->id)
                     ->decrement('stock_quantity', $item->quantity);
+
+                $updatedProduct = Product::find($product->id);
+                if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
+                    $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                }
             }
 
             $cart->items()->delete();
@@ -284,6 +290,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 if ($item->product_id) {
                     Product::where('id', $item->product_id)
                         ->increment('stock_quantity', $item->quantity);
+
+                    $updatedProduct = Product::find($item->product_id);
+                    if ($updatedProduct && $updatedProduct->stock_quantity > 0) {
+                        $updatedProduct->update(['stock_type' => StockType::IN_STOCK]);
+                    }
                 }
             }
 
@@ -561,6 +572,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     if ($item->product_id) {
                         Product::where('id', $item->product_id)
                             ->increment('stock_quantity', $item->quantity);
+
+                        $updatedProduct = Product::find($item->product_id);
+                        if ($updatedProduct && $updatedProduct->stock_quantity > 0) {
+                            $updatedProduct->update(['stock_type' => StockType::IN_STOCK]);
+                        }
                     }
                 }
 
@@ -771,6 +787,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                 Product::where('id', $product->id)
                     ->decrement('stock_quantity', $item['quantity']);
+
+                $updatedProduct = Product::find($product->id);
+                if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
+                    $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                }
             }
 
             // Giảm số lượt sử dụng discount code
@@ -846,6 +867,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                         if ($oldItem->product_id) {
                             Product::where('id', $oldItem->product_id)
                                 ->increment('stock_quantity', $oldItem->quantity);
+
+                            $restoredProduct = Product::find($oldItem->product_id);
+                            if ($restoredProduct && $restoredProduct->stock_quantity > 0) {
+                                $restoredProduct->update(['stock_type' => StockType::IN_STOCK]);
+                            }
                         }
                     }
 
@@ -879,6 +905,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
                         Product::where('id', $product->id)
                             ->decrement('stock_quantity', $item['quantity']);
+
+                        $updatedProduct = Product::find($product->id);
+                        if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
+                            $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                        }
                     }
                 }
 
