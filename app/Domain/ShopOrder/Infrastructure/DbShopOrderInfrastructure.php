@@ -203,8 +203,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 "Đơn hàng mới #{$order->order_number}",
                 "Có đơn hàng mới được tạo.",
                 [
+                    'redirectType' => 'order_detail',
                     'type' => 'order_created',
-                    'order_id' => $order->id,
+                    'order_id' => (string) $order->id,
                     'order_number' => $order->order_number,
                     'status' => OrderStatus::PENDING,
                 ]
@@ -637,8 +638,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 "Đơn hàng #{$order->order_number} cập nhật trạng thái",
                 "Trạng thái đơn hàng đã chuyển sang: {$statusLabel}",
                 [
+                    'redirectType' => 'order_detail',
                     'type' => 'order_status',
-                    'order_id' => $order->id,
+                    'order_id' => (string) $order->id,
                     'order_number' => $order->order_number,
                     'old_status' => $order->getOriginal('status'),
                     'new_status' => $status,
@@ -806,8 +808,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 "Đơn hàng mới #{$order->order_number}",
                 "Có đơn hàng mới được tạo bởi admin.",
                 [
+                    'redirectType' => 'order_detail',
                     'type' => 'order_created',
-                    'order_id' => $order->id,
+                    'order_id' => (string) $order->id,
                     'order_number' => $order->order_number,
                     'status' => $status,
                 ]
@@ -1033,8 +1036,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             "Đơn hàng #{$order->order_number} cập nhật thanh toán",
             "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
             [
+                'redirectType' => 'order_detail',
                 'type' => 'payment_status',
-                'order_id' => $order->id,
+                'order_id' => (string) $order->id,
                 'order_number' => $order->order_number,
                 'payment_status' => $paymentStatus,
             ]
@@ -1510,8 +1514,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     "Đơn hàng #{$order->order_number} cập nhật thanh toán",
                     "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
                     [
+                        'redirectType' => 'order_detail',
                         'type' => 'payment_status',
-                        'order_id' => $order->id,
+                        'order_id' => (string) $order->id,
                         'order_number' => $order->order_number,
                         'payment_status' => PaymentStatus::PAID,
                     ]
@@ -1553,8 +1558,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     "Đơn hàng #{$order->order_number} cập nhật thanh toán",
                     "Trạng thái thanh toán đã chuyển sang: {$paymentLabel}",
                     [
+                        'redirectType' => 'order_detail',
                         'type' => 'payment_status',
-                        'order_id' => $order->id,
+                        'order_id' => (string) $order->id,
                         'order_number' => $order->order_number,
                         'payment_status' => PaymentStatus::FAILED,
                     ]
