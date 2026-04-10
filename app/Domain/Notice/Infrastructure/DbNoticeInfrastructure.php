@@ -157,7 +157,7 @@ class DbNoticeInfrastructure implements NoticeRepository
             ]);
 
         // Merge and sort by created_at desc
-        $merged = $systemNotices->merge($userNotices)
+        $merged = $systemNotices->toBase()->merge($userNotices)
             ->sortByDesc('created_at')
             ->values();
 
