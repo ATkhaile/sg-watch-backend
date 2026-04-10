@@ -1362,11 +1362,11 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return $currency === 'JPY' ? 1000 : 175000;
         }
 
-        // JP: Hokkaido / Okinawa = 1,500 JPY, others = 0 JPY
+        // JP: Hokkaido / Okinawa = 1,000 JPY, others = 0 JPY
         if ($address->country_code === 'JP' && $address->jpDetail) {
             $prefectureName = $address->jpDetail->prefectureMaster?->name ?? '';
             if (in_array($prefectureName, ['北海道', '沖縄県'])) {
-                return 1500;
+                return 1000;
             }
         }
 

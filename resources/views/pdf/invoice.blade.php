@@ -88,17 +88,27 @@
             <tr>
                 <td style="text-align: left;">{{ $item['product_name'] }}</td>
                 <td style="text-align: right;">{{ $item['quantity'] }}</td>
-                <td style="text-align: right;">{{ number_format((float) $item['unit_price'], 0, ',', '.') }}đ</td>
-                <td style="text-align: right;">{{ number_format((float) $item['total_price'], 0, ',', '.') }}đ</td>
+                <td style="text-align: right;">¥{{ number_format($item['unit_price_jpy'], 0, ',', '.') }}</td>
+                <td style="text-align: right;">¥{{ number_format($item['total_price_jpy'], 0, ',', '.') }}</td>
             </tr>
             @endforeach
+            {{-- Shipping Fee --}}
+            <tr>
+                <td style="text-align: left; font-weight: bold;">Phí vận chuyển</td>
+                <td style="text-align: right;"></td>
+                <td style="text-align: right;"></td>
+                <td style="text-align: right;">¥{{ number_format($shipping_fee_jpy, 0, ',', '.') }}</td>
+            </tr>
         </tbody>
     </table>
 
     {{-- Total --}}
     <div style="text-align: right; margin-bottom: 20px;">
         <div style="font-size: 11pt; font-weight: bold; color: #333333;">
-            Tổng Tiền: <b style="font-size: 14pt; color: #C5A55A;">{{ number_format((float) $order['total_amount'], 0, ',', '.') }}đ</b>
+            Tổng Tiền: <b style="font-size: 14pt; color: #C5A55A;">¥{{ number_format($total_jpy, 0, ',', '.') }}</b>
+        </div>
+        <div style="font-size: 10pt; color: #555555; margin-top: 5px;">
+            Quy đổi VND (×175): <b style="color: #C5A55A;">{{ number_format($total_vnd, 0, ',', '.') }}đ</b>
         </div>
         <div style="font-size: 8pt; color: #888888;">(đã bao gồm thuế)</div>
     </div>

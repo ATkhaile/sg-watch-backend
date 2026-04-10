@@ -31,15 +31,25 @@ class AdminGenerateInvoiceAction extends BaseController
 
     private function generatePdf(Order $order): Response
     {
-        $items = $order->items->map(function ($item) {
+        $conversionRate = 175;
+        $isJpy = $order->currency === 'JPY';
+
+        $items = $order->items->map(function ($item) use ($isJpy, $conversionRate) {
+            $unitPriceJpy = $isJpy ? (int) $item->unit_price : (int) round($item->unit_price / $conversionRate);
+            $totalPriceJpy = $isJpy ? (int) $item->total_price : (int) round($item->total_price / $conversionRate);
             return [
                 'product_name' => $item->product_name,
                 'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'total_price' => $item->total_price,
+                'unit_price_jpy' => $unitPriceJpy,
+                'total_price_jpy' => $totalPriceJpy,
                 'warranty_months' => $item->product?->warranty_months ?? 0,
             ];
         })->toArray();
+
+        $shippingFeeJpy = $isJpy ? (int) $order->shipping_fee : (int) round($order->shipping_fee / $conversionRate);
+        $subtotalJpy = array_sum(array_column($items, 'total_price_jpy'));
+        $totalJpy = $subtotalJpy + $shippingFeeJpy;
+        $totalVnd = $totalJpy * $conversionRate;
 
         $maxWarrantyMonths = max(array_column($items, 'warranty_months') ?: [0]);
         $warrantyYears = (int) floor($maxWarrantyMonths / 12);
@@ -61,6 +71,10 @@ class AdminGenerateInvoiceAction extends BaseController
         $data = [
             'order' => $order->toArray(),
             'items' => $items,
+            'subtotal_jpy' => $subtotalJpy,
+            'shipping_fee_jpy' => $shippingFeeJpy,
+            'total_jpy' => $totalJpy,
+            'total_vnd' => $totalVnd,
             'warranty_text' => $warrantyText,
             'warranty_from' => $warrantyFromDate->format('d/m/Y'),
             'warranty_to' => $warrantyToDate->format('d/m/Y'),
