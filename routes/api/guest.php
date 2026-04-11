@@ -18,3 +18,4 @@ require __DIR__ . '/guest/banner.php';
 require __DIR__ . '/guest/discount_code.php';
 require __DIR__ . '/guest/prefecture.php';
 require __DIR__ . '/guest/big_sale.php';
+require __DIR__ . '/guest/post.php';

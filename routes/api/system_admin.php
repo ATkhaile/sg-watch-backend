@@ -25,4 +25,5 @@ Route::group([
     require __DIR__ . '/system_admin/shop_brand.php';
     require __DIR__ . '/system_admin/shop_category.php';
     require __DIR__ . '/system_admin/big_sale.php';
+    require __DIR__ . '/system_admin/post.php';
 });
