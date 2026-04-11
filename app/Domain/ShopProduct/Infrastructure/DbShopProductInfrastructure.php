@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Models\Shop\Favorite;
 use App\Models\Shop\Order;
 use App\Models\Shop\Product;
+use App\Models\Shop\ProductColor;
 use App\Models\Shop\ProductImage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -196,7 +197,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
-            ->with(['brand:id,name,slug,logo_url,country', 'category:id,name,slug,parent_id', 'images', 'approvedReviews.user:id,first_name,last_name'])
+            ->with(['brand:id,name,slug,logo_url,country', 'category:id,name,slug,parent_id', 'images', 'colors.images', 'approvedReviews.user:id,first_name,last_name'])
             ->first();
 
         if (!$product) {
@@ -265,6 +266,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
                 'sort_order' => $img->sort_order,
             ])->toArray(),
+            'colors' => $product->colors->map(fn ($color) => $this->formatColor($color))->toArray(),
             'reviews' => $product->approvedReviews->map(fn ($review) => [
                 'id' => $review->id,
                 'rating' => $review->rating,
@@ -381,7 +383,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
 
     public function adminGetById(int $id): ?array
     {
-        $product = Product::with(['brand:id,name,slug,logo_url,country', 'category:id,name,slug,parent_id', 'images', 'approvedReviews.user:id,first_name,last_name'])
+        $product = Product::with(['brand:id,name,slug,logo_url,country', 'category:id,name,slug,parent_id', 'images', 'colors.images', 'approvedReviews.user:id,first_name,last_name'])
             ->find($id);
 
         if (!$product) {
@@ -685,8 +687,40 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 'alt_text' => $img->alt_text,
                 'sort_order' => $img->sort_order,
             ])->toArray(),
+            'colors' => $product->relationLoaded('colors')
+                ? $product->colors->map(fn ($color) => $this->formatColor($color))->toArray()
+                : [],
             'created_at' => $product->created_at?->toIso8601String(),
             'updated_at' => $product->updated_at?->toIso8601String(),
+        ];
+    }
+
+    private function formatColor(ProductColor $color): array
+    {
+        return [
+            'id' => $color->id,
+            'product_id' => $color->product_id,
+            'color_code' => $color->color_code,
+            'color_name' => $color->color_name,
+            'sku' => $color->sku,
+            'price_jpy' => $color->price_jpy,
+            'price_vnd' => $color->price_vnd,
+            'original_price_jpy' => $color->original_price_jpy,
+            'original_price_vnd' => $color->original_price_vnd,
+            'sale_percent' => $color->sale_percent,
+            'points' => $color->points,
+            'stock_quantity' => $color->stock_quantity,
+            'is_active' => $color->is_active,
+            'sort_order' => $color->sort_order,
+            'images' => $color->relationLoaded('images')
+                ? $color->images->map(fn ($img) => [
+                    'id' => $img->id,
+                    'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
+                    'alt_text' => $img->alt_text,
+                    'is_primary' => $img->is_primary,
+                    'sort_order' => $img->sort_order,
+                ])->toArray()
+                : [],
         ];
     }
 }

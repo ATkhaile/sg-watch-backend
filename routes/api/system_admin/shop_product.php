@@ -24,3 +24,11 @@ Route::prefix('shop/products')->group(function () {
     Route::post('{id}', \App\Http\Actions\Api\ShopProduct\UpdateProductAction::class);
     Route::delete('{id}', \App\Http\Actions\Api\ShopProduct\DeleteProductAction::class);
 });
+
+// Product Color Variants
+Route::prefix('shop/product-colors')->group(function () {
+    Route::get('by-product/{productId}', \App\Http\Actions\Api\ShopProductColor\GetProductColorsAction::class);
+    Route::post('/', \App\Http\Actions\Api\ShopProductColor\CreateProductColorAction::class);
+    Route::post('{id}', \App\Http\Actions\Api\ShopProductColor\UpdateProductColorAction::class);
+    Route::delete('{id}', \App\Http\Actions\Api\ShopProductColor\DeleteProductColorAction::class);
+});

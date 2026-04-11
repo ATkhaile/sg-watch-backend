@@ -21,6 +21,9 @@ Route::prefix('shop')->group(function () {
     Route::get('products/best-sellers', \App\Http\Actions\Api\ShopProduct\GetBestSellersAction::class);
     Route::get('products/{slug}', \App\Http\Actions\Api\ShopProduct\GetProductDetailAction::class);
 
+    // Product Colors
+    Route::get('products/{productId}/colors', \App\Http\Actions\Api\ShopProductColor\GetProductColorsAction::class);
+
     // Reviews
     Route::get('products/{productId}/reviews', \App\Http\Actions\Api\ShopReview\GetProductReviewsAction::class);
 
