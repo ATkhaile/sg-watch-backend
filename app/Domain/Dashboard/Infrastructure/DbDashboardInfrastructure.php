@@ -17,7 +17,12 @@ class DbDashboardInfrastructure implements DashboardRepository
 
         [$dateFrom, $dateTo] = $this->getDateRange($filterType, $filters);
 
+        $statusFilter = $filters['order_status'] ?? null;
+
         $orderQuery = Order::whereBetween('created_at', [$dateFrom, $dateTo]);
+        if (!empty($statusFilter)) {
+            $orderQuery->whereIn('status', $statusFilter);
+        }
 
         $totalOrders = (clone $orderQuery)->count();
 
@@ -31,13 +36,13 @@ class DbDashboardInfrastructure implements DashboardRepository
             ->pluck('count', 'status')
             ->toArray();
 
-        $allStatuses = OrderStatus::getValues();
+        $filteredStatuses = !empty($statusFilter) ? $statusFilter : OrderStatus::getValues();
         $ordersByStatusFull = [];
-        foreach ($allStatuses as $status) {
+        foreach ($filteredStatuses as $status) {
             $ordersByStatusFull[$status] = $ordersByStatus[$status] ?? 0;
         }
 
-        $revenueChart = $this->getRevenueChart($filterType, $filters, $dateFrom, $dateTo);
+        $revenueChart = $this->getRevenueChart($filterType, $filters, $dateFrom, $dateTo, $statusFilter);
 
         $stockStats = Product::where('is_active', true)
             ->selectRaw('COALESCE(SUM(stock_quantity), 0) as total_quantity')
@@ -52,6 +57,7 @@ class DbDashboardInfrastructure implements DashboardRepository
             'revenue_chart' => $revenueChart,
             'orders_by_status' => $ordersByStatusFull,
             'filter_type' => $filterType,
+            'order_status' => $statusFilter,
             'date_from' => $dateFrom->toDateString(),
             'date_to' => $dateTo->toDateString(),
         ];
@@ -84,24 +90,29 @@ class DbDashboardInfrastructure implements DashboardRepository
         }
     }
 
-    private function getRevenueChart(string $filterType, array $filters, $dateFrom, $dateTo): array
+    private function getRevenueChart(string $filterType, array $filters, $dateFrom, $dateTo, ?array $statusFilter = null): array
     {
         switch ($filterType) {
             case 'year':
-                return $this->getRevenueByMonth((int) $filters['year']);
+                return $this->getRevenueByMonth((int) $filters['year'], $statusFilter);
 
             case 'date_range':
             case 'month':
             default:
-                return $this->getRevenueByDay($dateFrom, $dateTo);
+                return $this->getRevenueByDay($dateFrom, $dateTo, $statusFilter);
         }
     }
 
-    private function getRevenueByDay($dateFrom, $dateTo): array
+    private function getRevenueByDay($dateFrom, $dateTo, ?array $statusFilter = null): array
     {
-        $data = Order::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->whereNotIn('status', [OrderStatus::CANCELLED, OrderStatus::REFUNDED])
-            ->selectRaw('DATE(created_at) as date')
+        $query = Order::whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereNotIn('status', [OrderStatus::CANCELLED, OrderStatus::REFUNDED]);
+
+        if (!empty($statusFilter)) {
+            $query->whereIn('status', $statusFilter);
+        }
+
+        $data = $query->selectRaw('DATE(created_at) as date')
             ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue')
             ->selectRaw('COUNT(*) as orders')
             ->groupByRaw('DATE(created_at)')
@@ -126,11 +137,16 @@ class DbDashboardInfrastructure implements DashboardRepository
         return $result;
     }
 
-    private function getRevenueByMonth(int $year): array
+    private function getRevenueByMonth(int $year, ?array $statusFilter = null): array
     {
-        $data = Order::whereYear('created_at', $year)
-            ->whereNotIn('status', [OrderStatus::CANCELLED, OrderStatus::REFUNDED])
-            ->selectRaw('EXTRACT(MONTH FROM created_at) as month')
+        $query = Order::whereYear('created_at', $year)
+            ->whereNotIn('status', [OrderStatus::CANCELLED, OrderStatus::REFUNDED]);
+
+        if (!empty($statusFilter)) {
+            $query->whereIn('status', $statusFilter);
+        }
+
+        $data = $query->selectRaw('EXTRACT(MONTH FROM created_at) as month')
             ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue')
             ->selectRaw('COUNT(*) as orders')
             ->groupByRaw('EXTRACT(MONTH FROM created_at)')
