@@ -15,6 +15,7 @@ class Banner extends Model
     protected $fillable = [
         'media_url',
         'media_type',
+        'link',
         'sort_order',
         'is_active',
     ];

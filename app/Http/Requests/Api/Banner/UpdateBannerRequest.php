@@ -15,6 +15,7 @@ class UpdateBannerRequest extends ApiFormRequest
     {
         return [
             'media' => ['nullable', 'file', 'mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,webm', 'max:102400'],
+            'link' => ['nullable', 'string', 'url', 'max:2048'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];

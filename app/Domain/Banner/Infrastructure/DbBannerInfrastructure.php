@@ -128,6 +128,7 @@ class DbBannerInfrastructure implements BannerRepository
             'id' => $banner->id,
             'media_url' => $banner->media_full_url,
             'media_type' => $banner->media_type,
+            'link' => $banner->link,
             'sort_order' => $banner->sort_order,
             'is_active' => $banner->is_active,
             'created_at' => $banner->created_at?->toIso8601String(),
