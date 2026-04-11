@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('shop')->group(function () {
+    // Collections
+    Route::get('collections', \App\Http\Actions\Api\ShopCollection\GetCollectionsAction::class);
+
     // Products
     Route::get('featured-products', \App\Http\Actions\Api\ShopProduct\GetFeaturedProductsAction::class);
     Route::get('products', \App\Http\Actions\Api\ShopProduct\GetProductListAction::class);
