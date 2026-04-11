@@ -8,6 +8,7 @@ class FirebaseNotificationEntity
         public ?int $page = null,
         public ?int $limit = null,
         public ?string $fcm_token = null,
+        public ?bool $is_read = null,
         public array $notifications = [],
         public array $pagination = [],
         public int $statusCode = 200
@@ -27,6 +28,16 @@ class FirebaseNotificationEntity
     public function getFcmToken(): ?string
     {
         return $this->fcm_token;
+    }
+
+    public function getIsRead(): ?bool
+    {
+        return $this->is_read;
+    }
+
+    public function setIsRead(?bool $is_read): void
+    {
+        $this->is_read = $is_read;
     }
 
     public function getNotifications(): array

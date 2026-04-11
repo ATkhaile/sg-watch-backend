@@ -4,6 +4,10 @@ return [
     'list' => [
         'message' => 'Firebase notifications retrieved successfully',
     ],
+    'detail' => [
+        'message' => 'Firebase notification retrieved successfully',
+        'not_found' => 'Notification not found',
+    ],
     'update_readed' => [
         'success' => 'Notification marked as read successfully',
         'failed' => 'Failed to mark notification as read',
@@ -30,6 +34,9 @@ return [
             'required' => 'Notification ID is required',
             'integer' => 'Notification ID must be an integer',
             'exists' => 'Notification does not exist',
+        ],
+        'is_read' => [
+            'boolean' => 'is_read must be true or false',
         ],
     ],
 ];

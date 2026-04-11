@@ -16,6 +16,7 @@ class GetMemberNoticesRequest extends ApiFormRequest
         return [
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'is_read' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -16,5 +16,7 @@ interface NoticeRepository
 
     public function getMemberNotices(int $userId, array $filters): array;
 
+    public function getMemberNoticeDetail(int $userId, string $noticeId): ?array;
+
     public function markAsRead(int $userId, int $userNoticeId): array;
 }

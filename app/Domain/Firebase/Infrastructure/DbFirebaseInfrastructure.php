@@ -33,12 +33,52 @@ class DbFirebaseInfrastructure implements FirebaseRepository
             ->where('user_notifications.fcm_token_id', $fcmToken->id)
             ->orderBy('notifications.created_at', 'DESC');
 
+        if ($entity->getIsRead() === true) {
+            $query->whereNotNull('user_notifications.read_at');
+        } elseif ($entity->getIsRead() === false) {
+            $query->whereNull('user_notifications.read_at');
+        }
+
         return $query->paginate(
             $entity->getLimit(),
             ['*'],
             'page',
             $entity->getPage()
         );
+    }
+
+    public function getNotificationDetail(int $notificationId, string $fcmToken): ?array
+    {
+        $fcmToken = FcmToken::where('fcm_token', $fcmToken)->first();
+
+        if (!$fcmToken) {
+            return null;
+        }
+
+        $notification = Notification::select([
+            'notifications.*',
+            'user_notifications.read_at',
+        ])
+            ->join('user_notifications', 'user_notifications.notification_id', '=', 'notifications.id')
+            ->where('notifications.id', $notificationId)
+            ->where('user_notifications.fcm_token_id', $fcmToken->id)
+            ->first();
+
+        if (!$notification) {
+            return null;
+        }
+
+        return [
+            'id' => $notification->id,
+            'title' => $notification->title,
+            'content' => $notification->content,
+            'push_type' => $notification->push_type,
+            'push_datetime' => $notification->push_datetime?->format('Y/m/d H:i:s'),
+            'push_now_flag' => $notification->push_now_flag,
+            'read_at' => $notification->read_at?->format('Y/m/d H:i:s'),
+            'created_at' => $notification->created_at->format('Y/m/d H:i:s'),
+            'updated_at' => $notification->updated_at->format('Y/m/d H:i:s'),
+        ];
     }
 
     public function updateNotificationReaded(UpdateFirebaseNotificationReadedEntity $entity, int $id): bool

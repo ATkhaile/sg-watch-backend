@@ -4,6 +4,10 @@ return [
     'list' => [
         'message' => 'Firebase通知が正常に取得されました',
     ],
+    'detail' => [
+        'message' => 'Firebase通知が正常に取得されました',
+        'not_found' => '通知が見つかりません',
+    ],
     'update_readed' => [
         'success' => '通知が正常に既読としてマークされました',
         'failed' => '通知を既読としてマークできませんでした',
@@ -30,6 +34,9 @@ return [
             'required' => '通知IDは必須です',
             'integer' => '通知IDは整数である必要があります',
             'exists' => '通知が存在しません',
+        ],
+        'is_read' => [
+            'boolean' => 'is_readはtrueまたはfalseである必要があります',
         ],
     ],
 ];

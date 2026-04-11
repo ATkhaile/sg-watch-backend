@@ -161,6 +161,11 @@ class DbNoticeInfrastructure implements NoticeRepository
             ->sortByDesc('created_at')
             ->values();
 
+        if (isset($filters['is_read'])) {
+            $isRead = filter_var($filters['is_read'], FILTER_VALIDATE_BOOLEAN);
+            $merged = $merged->filter(fn($item) => $isRead ? $item['read_at'] !== null : $item['read_at'] === null)->values();
+        }
+
         $total = $merged->count();
         $lastPage = (int) ceil($total / $perPage);
         $items = $merged->forPage($page, $perPage)->values()->toArray();
@@ -174,6 +179,50 @@ class DbNoticeInfrastructure implements NoticeRepository
                 'total' => $total,
             ],
         ];
+    }
+
+    public function getMemberNoticeDetail(int $userId, string $noticeId): ?array
+    {
+        [$type, $id] = explode('_', $noticeId, 2) + [null, null];
+
+        if ($type === 'system') {
+            $notice = Notice::where('id', (int) $id)->where('is_active', true)->first();
+            if (!$notice) {
+                return null;
+            }
+            return [
+                'id' => 'system_' . $notice->id,
+                'type' => 'system',
+                'title' => $notice->title,
+                'content' => $notice->content,
+                'image_url' => $notice->image_full_url,
+                'data' => null,
+                'read_at' => null,
+                'created_at' => $notice->created_at?->toIso8601String(),
+            ];
+        }
+
+        if ($type === 'user') {
+            $notice = UserNotice::where('id', (int) $id)->where('user_id', $userId)->first();
+            if (!$notice) {
+                return null;
+            }
+            if (!$notice->read_at) {
+                $notice->update(['read_at' => now()]);
+            }
+            return [
+                'id' => 'user_' . $notice->id,
+                'type' => $notice->type,
+                'title' => $notice->title,
+                'content' => $notice->content,
+                'image_url' => null,
+                'data' => $notice->data,
+                'read_at' => $notice->read_at?->toIso8601String(),
+                'created_at' => $notice->created_at?->toIso8601String(),
+            ];
+        }
+
+        return null;
     }
 
     public function markAsRead(int $userId, int $userNoticeId): array

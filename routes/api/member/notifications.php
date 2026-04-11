@@ -37,5 +37,6 @@ Route::prefix('notification_pushs')->group(function () {
 Route::prefix('firebase/notifications')->group(function () {
     Route::get('', \App\Http\Actions\Api\Firebase\GetFirebaseNotificationsAction::class);
     Route::get('unread', \App\Http\Actions\Api\Firebase\GetFirebaseUnreadNotificationsAction::class);
+    Route::get('{id}', \App\Http\Actions\Api\Firebase\GetFirebaseNotificationDetailAction::class);
     Route::put('{id}/readed', \App\Http\Actions\Api\Firebase\UpdateFirebaseNotificationReadedAction::class);
 });

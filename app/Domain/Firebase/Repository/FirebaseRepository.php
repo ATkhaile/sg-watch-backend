@@ -10,6 +10,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 interface FirebaseRepository
 {
     public function getNotifications(FirebaseNotificationEntity $entity): LengthAwarePaginator;
+    public function getNotificationDetail(int $notificationId, string $fcmToken): ?array;
     public function updateNotificationReaded(UpdateFirebaseNotificationReadedEntity $entity, int $id): bool;
     public function getUnreadNotifications(GetFirebaseUnreadNotificationsEntity $entity): array;
 }

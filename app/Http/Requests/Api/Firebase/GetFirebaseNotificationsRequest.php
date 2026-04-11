@@ -17,6 +17,7 @@ class GetFirebaseNotificationsRequest extends ApiFormRequest
         return [
             'page' => 'nullable|integer|min:1',
             'limit' => 'nullable|integer|min:1',
+            'is_read' => 'nullable|boolean',
             'fcm_token' => [
                 'required',
                 'string',
@@ -35,6 +36,7 @@ class GetFirebaseNotificationsRequest extends ApiFormRequest
             'page.min' => __('firebase.validation.page.min'),
             'limit.integer' => __('firebase.validation.per_page.integer'),
             'limit.min' => __('firebase.validation.per_page.min'),
+            'is_read.boolean' => __('firebase.validation.is_read.boolean'),
             'fcm_token.required' => __('firebase.validation.fcm_token.required'),
             'fcm_token.string' => __('firebase.validation.fcm_token.string'),
             'fcm_token.max' => __('firebase.validation.fcm_token.max'),
