@@ -73,6 +73,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Dashboard
         $this->app->register(\App\Providers\Domain\DashboardDomainProvider::class);
+
+        // Shop Inventory History
+        $this->app->register(\App\Providers\Domain\ShopInventoryHistoryDomainProvider::class);
     }
 
     /**

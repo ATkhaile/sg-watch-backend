@@ -2,6 +2,7 @@
 
 namespace App\Models\Shop;
 
+use App\Models\Shop\ProductColor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,7 +13,9 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'product_color_id',
         'product_name',
+        'product_color_name',
         'product_sku',
         'product_image',
         'quantity',
@@ -36,5 +39,10 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    public function productColor(): BelongsTo
+    {
+        return $this->belongsTo(ProductColor::class, 'product_color_id');
     }
 }

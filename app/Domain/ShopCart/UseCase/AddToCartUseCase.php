@@ -13,8 +13,8 @@ final class AddToCartUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(?int $userId, ?string $deviceId, int $productId, int $quantity, string $currency): array
+    public function __invoke(?int $userId, ?string $deviceId, int $productId, int $quantity, string $currency, ?int $productColorId = null): array
     {
-        return $this->repository->addItem($userId, $deviceId, $productId, $quantity, $currency);
+        return $this->repository->addItem($userId, $deviceId, $productId, $quantity, $currency, $productColorId);
     }
 }

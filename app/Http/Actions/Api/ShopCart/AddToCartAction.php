@@ -27,12 +27,15 @@ class AddToCartAction extends BaseController
         $userId = $user ? (int) $user->id : null;
         $deviceId = $request->validated('device_id');
 
+        $colorId = $request->validated('product_color_id');
+
         $result = $this->useCase->__invoke(
             $userId,
             $deviceId,
             (int) $request->validated('product_id'),
             (int) ($request->validated('quantity') ?? 1),
             $request->validated('currency') ?? 'JPY',
+            $colorId ? (int) $colorId : null,
         );
 
         return $this->responder->__invoke($result);

@@ -7,6 +7,7 @@ use App\Domain\ShopCart\Repository\ShopCartRepository;
 use App\Models\Shop\Cart;
 use App\Models\Shop\CartItem;
 use App\Models\Shop\Product;
+use App\Models\Shop\ProductColor;
 
 class DbShopCartInfrastructure implements ShopCartRepository
 {
@@ -23,31 +24,45 @@ class DbShopCartInfrastructure implements ShopCartRepository
             ];
         }
 
-        $cart->load(['items.product.brand:id,name,slug', 'items.product.images']);
+        $cart->load(['items.product.brand:id,name,slug', 'items.product.images', 'items.productColor.images']);
 
         $items = $cart->items->map(function (CartItem $item) {
             $product = $item->product;
+            $color   = $item->productColor;
 
             return [
-                'id' => $item->id,
-                'product_id' => $item->product_id,
-                'quantity' => $item->quantity,
+                'id'                => $item->id,
+                'product_id'        => $item->product_id,
+                'product_color_id'  => $item->product_color_id,
+                'quantity'          => $item->quantity,
                 'price_at_addition' => $item->price_at_addition,
-                'currency' => $item->currency,
-                'subtotal' => $item->subtotal,
-                'product' => $product ? [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'slug' => $product->slug,
-                    'sku' => $product->sku,
-                    'price_jpy' => $product->price_jpy,
-                    'price_vnd' => $product->price_vnd,
-                    'stock_quantity' => $product->stock_quantity,
+                'currency'          => $item->currency,
+                'subtotal'          => $item->subtotal,
+                'product'           => $product ? [
+                    'id'               => $product->id,
+                    'name'             => $product->name,
+                    'slug'             => $product->slug,
+                    'sku'              => $product->sku,
+                    'price_jpy'        => $product->price_jpy,
+                    'price_vnd'        => $product->price_vnd,
+                    'stock_quantity'   => $product->stock_quantity,
                     'primary_image_url' => $product->primary_image_url,
-                    'brand' => $product->brand ? [
-                        'id' => $product->brand->id,
+                    'brand'            => $product->brand ? [
+                        'id'   => $product->brand->id,
                         'name' => $product->brand->name,
                     ] : null,
+                ] : null,
+                'product_color' => $color ? [
+                    'id'               => $color->id,
+                    'color_name'       => $color->color_name,
+                    'color_code'       => $color->color_code,
+                    'sku'              => $color->sku,
+                    'price_jpy'        => $color->price_jpy,
+                    'price_vnd'        => $color->price_vnd,
+                    'stock_quantity'   => $color->stock_quantity,
+                    'primary_image_url' => $color->primaryImage?->image_url
+                        ? CommonComponent::getFullUrl($color->primaryImage->image_url)
+                        : null,
                 ] : null,
             ];
         })->toArray();
@@ -60,47 +75,64 @@ class DbShopCartInfrastructure implements ShopCartRepository
         ];
     }
 
-    public function addItem(?int $userId, ?string $deviceId, int $productId, int $quantity, string $currency): array
+    public function addItem(?int $userId, ?string $deviceId, int $productId, int $quantity, string $currency, ?int $productColorId = null): array
     {
-        $product = Product::where('id', $productId)
-            ->where('is_active', true)
-            ->first();
+        $product = Product::where('id', $productId)->where('is_active', true)->first();
 
         if (!$product) {
             return ['success' => false, 'message' => 'Product not found or inactive.'];
         }
 
-        if ($product->stock_quantity < $quantity) {
-            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $product->stock_quantity];
+        // Resolve color variant if provided
+        $color = null;
+        if ($productColorId) {
+            $color = ProductColor::where('id', $productColorId)
+                ->where('product_id', $productId)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$color) {
+                return ['success' => false, 'message' => 'Product color not found or inactive.'];
+            }
         }
 
-        $cart = $this->findOrCreateCart($userId, $deviceId);
+        // Check stock against color or product
+        $availableStock = $color ? $color->stock_quantity : $product->stock_quantity;
+        if ($availableStock < $quantity) {
+            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock];
+        }
 
-        $price = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
+        $cart  = $this->findOrCreateCart($userId, $deviceId);
+        $price = $currency === 'JPY'
+            ? ($color ? $color->price_jpy : $product->price_jpy)
+            : ($color ? $color->price_vnd : $product->price_vnd);
 
+        // Find existing cart item matching both product and color
         $cartItem = CartItem::where('cart_id', $cart->id)
             ->where('product_id', $productId)
+            ->where('product_color_id', $productColorId)
             ->first();
 
         if ($cartItem) {
             $newQuantity = $cartItem->quantity + $quantity;
 
-            if ($product->stock_quantity < $newQuantity) {
-                return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $product->stock_quantity . ', in cart: ' . $cartItem->quantity];
+            if ($availableStock < $newQuantity) {
+                return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock . ', in cart: ' . $cartItem->quantity];
             }
 
             $cartItem->update([
-                'quantity' => $newQuantity,
+                'quantity'          => $newQuantity,
                 'price_at_addition' => $price,
-                'currency' => $currency,
+                'currency'          => $currency,
             ]);
         } else {
             $cartItem = CartItem::create([
-                'cart_id' => $cart->id,
-                'product_id' => $productId,
-                'quantity' => $quantity,
+                'cart_id'          => $cart->id,
+                'product_id'       => $productId,
+                'product_color_id' => $productColorId,
+                'quantity'         => $quantity,
                 'price_at_addition' => $price,
-                'currency' => $currency,
+                'currency'         => $currency,
             ]);
         }
 
@@ -108,12 +140,13 @@ class DbShopCartInfrastructure implements ShopCartRepository
             'success' => true,
             'message' => 'Product added to cart.',
             'cart_item' => [
-                'id' => $cartItem->id,
-                'product_id' => $cartItem->product_id,
-                'quantity' => $cartItem->quantity,
+                'id'                => $cartItem->id,
+                'product_id'        => $cartItem->product_id,
+                'product_color_id'  => $cartItem->product_color_id,
+                'quantity'          => $cartItem->quantity,
                 'price_at_addition' => $cartItem->price_at_addition,
-                'currency' => $cartItem->currency,
-                'subtotal' => $cartItem->subtotal,
+                'currency'          => $cartItem->currency,
+                'subtotal'          => $cartItem->subtotal,
             ],
         ];
     }
@@ -134,16 +167,22 @@ class DbShopCartInfrastructure implements ShopCartRepository
             return ['success' => false, 'message' => 'Cart item not found.'];
         }
 
-        $product = Product::where('id', $cartItem->product_id)
-            ->where('is_active', true)
-            ->first();
+        $product = Product::where('id', $cartItem->product_id)->where('is_active', true)->first();
 
         if (!$product) {
             return ['success' => false, 'message' => 'Product not found or inactive.'];
         }
 
-        if ($product->stock_quantity < $quantity) {
-            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $product->stock_quantity];
+        // Check stock against color variant or product
+        if ($cartItem->product_color_id) {
+            $color = ProductColor::find($cartItem->product_color_id);
+            $availableStock = $color ? $color->stock_quantity : 0;
+        } else {
+            $availableStock = $product->stock_quantity;
+        }
+
+        if ($availableStock < $quantity) {
+            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock];
         }
 
         $cartItem->update(['quantity' => $quantity]);
@@ -202,21 +241,23 @@ class DbShopCartInfrastructure implements ShopCartRepository
         foreach ($guestCart->items as $guestItem) {
             $existingItem = CartItem::where('cart_id', $userCart->id)
                 ->where('product_id', $guestItem->product_id)
+                ->where('product_color_id', $guestItem->product_color_id)
                 ->first();
 
             if ($existingItem) {
                 $existingItem->update([
-                    'quantity' => $existingItem->quantity + $guestItem->quantity,
+                    'quantity'          => $existingItem->quantity + $guestItem->quantity,
                     'price_at_addition' => $guestItem->price_at_addition,
-                    'currency' => $guestItem->currency,
+                    'currency'          => $guestItem->currency,
                 ]);
             } else {
                 CartItem::create([
-                    'cart_id' => $userCart->id,
-                    'product_id' => $guestItem->product_id,
-                    'quantity' => $guestItem->quantity,
+                    'cart_id'          => $userCart->id,
+                    'product_id'       => $guestItem->product_id,
+                    'product_color_id' => $guestItem->product_color_id,
+                    'quantity'         => $guestItem->quantity,
                     'price_at_addition' => $guestItem->price_at_addition,
-                    'currency' => $guestItem->currency,
+                    'currency'         => $guestItem->currency,
                 ]);
             }
         }

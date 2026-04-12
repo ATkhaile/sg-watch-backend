@@ -4,6 +4,8 @@ namespace App\Domain\ShopProductColor\Infrastructure;
 
 use App\Components\CommonComponent;
 use App\Domain\ShopProductColor\Repository\ShopProductColorRepository;
+use App\Enums\InventoryHistoryType;
+use App\Models\Shop\InventoryHistory;
 use App\Models\Shop\ProductColor;
 use App\Models\Shop\ProductColorImage;
 use Illuminate\Http\UploadedFile;
@@ -43,6 +45,20 @@ class DbShopProductColorInfrastructure implements ShopProductColorRepository
 
             $color = ProductColor::create($data);
 
+            // Record import history when initial stock is set
+            if (!empty($data['stock_quantity']) && (int) $data['stock_quantity'] > 0) {
+                InventoryHistory::create([
+                    'product_id'       => $color->product_id,
+                    'product_color_id' => $color->id,
+                    'type'             => InventoryHistoryType::IMPORT,
+                    'quantity'         => (int) $data['stock_quantity'],
+                    'stock_before'     => 0,
+                    'stock_after'      => (int) $data['stock_quantity'],
+                    'reference_type'   => 'admin_update',
+                    'reference_id'     => null,
+                ]);
+            }
+
             $this->syncImages($color, $images);
 
             $color->load('images');
@@ -67,6 +83,20 @@ class DbShopProductColorInfrastructure implements ShopProductColorRepository
             $newImages = $data['images'] ?? null;
             $existingImageIds = $data['existing_image_ids'] ?? null;
             unset($data['images'], $data['existing_image_ids']);
+
+            // Record import history when admin manually increases color stock
+            if (isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $color->stock_quantity) {
+                InventoryHistory::create([
+                    'product_id'       => $color->product_id,
+                    'product_color_id' => $color->id,
+                    'type'             => InventoryHistoryType::IMPORT,
+                    'quantity'         => (int) $data['stock_quantity'] - (int) $color->stock_quantity,
+                    'stock_before'     => (int) $color->stock_quantity,
+                    'stock_after'      => (int) $data['stock_quantity'],
+                    'reference_type'   => 'admin_update',
+                    'reference_id'     => null,
+                ]);
+            }
 
             $color->update($data);
 

@@ -4,8 +4,10 @@ namespace App\Domain\ShopProduct\Infrastructure;
 
 use App\Components\CommonComponent;
 use App\Domain\ShopProduct\Repository\ShopProductRepository;
+use App\Enums\InventoryHistoryType;
 use App\Enums\OrderStatus;
 use App\Models\Shop\Favorite;
+use App\Models\Shop\InventoryHistory;
 use App\Models\Shop\Order;
 use App\Models\Shop\Product;
 use App\Models\Shop\ProductColor;
@@ -452,6 +454,19 @@ class DbShopProductInfrastructure implements ShopProductRepository
                     Storage::disk('public')->delete($product->primary_image);
                 }
                 $data['primary_image'] = $primaryImage->store('products/' . $product->id, 'public');
+            }
+
+            // Record import history when admin manually increases stock
+            if (isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $product->stock_quantity) {
+                InventoryHistory::create([
+                    'product_id'     => $product->id,
+                    'type'           => InventoryHistoryType::IMPORT,
+                    'quantity'       => (int) $data['stock_quantity'] - (int) $product->stock_quantity,
+                    'stock_before'   => (int) $product->stock_quantity,
+                    'stock_after'    => (int) $data['stock_quantity'],
+                    'reference_type' => 'admin_update',
+                    'reference_id'   => null,
+                ]);
             }
 
             $product->update($data);

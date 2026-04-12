@@ -4,6 +4,7 @@ namespace App\Domain\ShopOrder\Infrastructure;
 
 use App\Components\CommonComponent;
 use App\Domain\ShopOrder\Repository\ShopOrderRepository;
+use App\Enums\InventoryHistoryType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\PaymentMethod;
@@ -11,9 +12,11 @@ use App\Enums\PaymentStatus;
 use App\Enums\ShippingMethod;
 use App\Models\DiscountCode;
 use App\Models\Shop\Cart;
+use App\Models\Shop\InventoryHistory;
 use App\Models\Shop\Order;
 use App\Models\Shop\OrderItem;
 use App\Models\Shop\Product;
+use App\Models\Shop\ProductColor;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Models\UserNotice;
@@ -41,7 +44,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return ['success' => false, 'message' => 'Cart is empty.'];
         }
 
-        $cart->load(['items.product.images']);
+        $cart->load(['items.product.images', 'items.productColor']);
 
         $address = UserAddress::where('id', $data['address_id'])
             ->where('user_id', $userId)
@@ -59,16 +62,24 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $subtotal = 0;
         foreach ($cart->items as $item) {
             $product = $item->product;
+            $color   = $item->productColor;
 
             if (!$product || !$product->is_active) {
                 return ['success' => false, 'message' => "Product \"{$item->product_id}\" is no longer available."];
             }
 
-            if ($product->stock_quantity < $item->quantity) {
-                return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\". Available: {$product->stock_quantity}"];
+            if ($color) {
+                if ($color->stock_quantity < $item->quantity) {
+                    return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\" ({$color->color_name}). Available: {$color->stock_quantity}"];
+                }
+                $price = $currency === 'JPY' ? $color->price_jpy : $color->price_vnd;
+            } else {
+                if ($product->stock_quantity < $item->quantity) {
+                    return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\". Available: {$product->stock_quantity}"];
+                }
+                $price = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
             }
 
-            $price = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
             $subtotal += $price * $item->quantity;
         }
 
@@ -160,25 +171,41 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
             foreach ($cart->items as $item) {
                 $product = $item->product;
-                $price = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
+                $color   = $item->productColor;
+
+                if ($color) {
+                    $price      = $currency === 'JPY' ? $color->price_jpy : $color->price_vnd;
+                    $imageUrl   = $color->primaryImage?->image_url
+                        ? \App\Components\CommonComponent::getFullUrl($color->primaryImage->image_url)
+                        : $product->primary_image_url;
+                } else {
+                    $price    = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
+                    $imageUrl = $product->primary_image_url;
+                }
 
                 OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_sku' => $product->sku,
-                    'product_image' => $product->primary_image_url,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $price,
-                    'total_price' => $price * $item->quantity,
+                    'order_id'           => $order->id,
+                    'product_id'         => $product->id,
+                    'product_color_id'   => $color?->id,
+                    'product_name'       => $product->name,
+                    'product_color_name' => $color?->color_name,
+                    'product_sku'        => $color?->sku ?? $product->sku,
+                    'product_image'      => $imageUrl,
+                    'quantity'           => $item->quantity,
+                    'unit_price'         => $price,
+                    'total_price'        => $price * $item->quantity,
                 ]);
 
-                Product::where('id', $product->id)
-                    ->decrement('stock_quantity', $item->quantity);
+                // Decrement color stock if applicable, else product stock
+                if ($color) {
+                    ProductColor::where('id', $color->id)->decrement('stock_quantity', $item->quantity);
+                } else {
+                    Product::where('id', $product->id)->decrement('stock_quantity', $item->quantity);
 
-                $updatedProduct = Product::find($product->id);
-                if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
-                    $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                    $updatedProduct = Product::find($product->id);
+                    if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
+                        $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                    }
                 }
             }
 
@@ -570,7 +597,12 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             // Restore stock and discount code on cancel
             if ($status === OrderStatus::CANCELLED) {
                 foreach ($order->items as $item) {
-                    if ($item->product_id) {
+                    if ($item->product_color_id) {
+                        // Restore color stock
+                        ProductColor::where('id', $item->product_color_id)
+                            ->increment('stock_quantity', $item->quantity);
+                    } elseif ($item->product_id) {
+                        // Restore product stock
                         Product::where('id', $item->product_id)
                             ->increment('stock_quantity', $item->quantity);
 
@@ -602,6 +634,33 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             }
 
             $order->update($updateData);
+
+            // Record export history when order is shipped
+            if ($status === OrderStatus::SHIPPING) {
+                foreach ($order->items as $item) {
+                    if (!$item->product_id) {
+                        continue;
+                    }
+
+                    if ($item->product_color_id) {
+                        $currentStock = ProductColor::where('id', $item->product_color_id)->value('stock_quantity') ?? 0;
+                    } else {
+                        $currentStock = Product::where('id', $item->product_id)->value('stock_quantity') ?? 0;
+                    }
+
+                    InventoryHistory::create([
+                        'product_id'       => $item->product_id,
+                        'product_color_id' => $item->product_color_id,
+                        'type'             => InventoryHistoryType::EXPORT,
+                        'quantity'         => $item->quantity,
+                        'stock_before'     => $currentStock + $item->quantity,
+                        'stock_after'      => $currentStock,
+                        'reference_type'   => 'order',
+                        'reference_id'     => $order->id,
+                        'note'             => 'Order #' . $order->order_number,
+                    ]);
+                }
+            }
 
             // Add points when order is completed
             if ($status === OrderStatus::COMPLETED) {

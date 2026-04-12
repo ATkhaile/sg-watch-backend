@@ -14,9 +14,10 @@ class AddToCartRequest extends ApiFormRequest
     public function rules(): array
     {
         $rules = [
-            'product_id' => ['required', 'integer', 'exists:shop_products,id'],
-            'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
-            'currency' => ['nullable', 'string', 'in:JPY,VND'],
+            'product_id'       => ['required', 'integer', 'exists:shop_products,id'],
+            'product_color_id' => ['nullable', 'integer', 'exists:shop_product_colors,id'],
+            'quantity'         => ['nullable', 'integer', 'min:1', 'max:99'],
+            'currency'         => ['nullable', 'string', 'in:JPY,VND'],
         ];
 
         // device_id required when not logged in
