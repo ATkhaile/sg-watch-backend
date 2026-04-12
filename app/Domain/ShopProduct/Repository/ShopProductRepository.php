@@ -13,6 +13,7 @@ interface ShopProductRepository
     public function update(int $id, array $data): array;
     public function delete(int $id): array;
     public function deleteByBrand(int $brandId): array;
+    public function restoreByBrand(int $brandId): array;
     public function updateFeaturedProducts(array $productIds): array;
     public function getFeaturedProducts(): array;
     public function updateProductSortOrder(int $productId, int $newDisplayOrder): array;

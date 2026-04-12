@@ -547,6 +547,29 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function restoreByBrand(int $brandId): array
+    {
+        $query = Product::withTrashed()->where('brand_id', $brandId)->whereNotNull('deleted_at');
+        $count = $query->count();
+
+        if ($count === 0) {
+            return [
+                'success'        => true,
+                'message'        => 'No deleted products found for this brand.',
+                'restored_count' => 0,
+            ];
+        }
+
+        $query->update(['deleted_at' => null]);
+
+        return [
+            'success'        => true,
+            'message'        => "Restored {$count} product(s) for brand ID {$brandId}.",
+            'restored_count' => $count,
+        ];
+    }
+
+
     public function updateProductSortOrder(int $productId, int $newDisplayOrder): array
     {
         return DB::transaction(function () use ($productId, $newDisplayOrder) {

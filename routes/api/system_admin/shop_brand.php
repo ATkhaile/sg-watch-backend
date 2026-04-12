@@ -15,4 +15,5 @@ Route::prefix('shop-brands')->group(function () {
     Route::post('{id}', \App\Http\Actions\Api\ShopBrand\UpdateShopBrandAction::class);
     Route::delete('{id}', \App\Http\Actions\Api\ShopBrand\DeleteShopBrandAction::class);
     Route::delete('{brandId}/products', \App\Http\Actions\Api\ShopProduct\DeleteProductsByBrandAction::class);
+    Route::post('{brandId}/products/restore', \App\Http\Actions\Api\ShopProduct\RestoreProductsByBrandAction::class);
 });
