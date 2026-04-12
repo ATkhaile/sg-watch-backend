@@ -64,6 +64,73 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
         return $collections->map(fn ($collection) => $this->formatCollection($collection))->toArray();
     }
 
+    public function getById(int $id): ?array
+    {
+        $collection = Collection::with(['products' => function ($query) {
+            $query->with(['brand:id,name,slug', 'category:id,name,slug', 'images']);
+        }])->find($id);
+
+        return $collection ? $this->formatCollection($collection) : null;
+    }
+
+    public function updateCollection(int $id, array $data): array
+    {
+        $collection = Collection::find($id);
+
+        if (!$collection) {
+            return ['success' => false, 'message' => 'Collection not found.'];
+        }
+
+        return DB::transaction(function () use ($collection, $data) {
+            if (!empty($data['name'])) {
+                $data['slug'] = Str::slug($data['name']) . '-' . Str::random(6);
+            }
+
+            $collection->update(array_filter([
+                'name'        => $data['name'] ?? null,
+                'slug'        => $data['slug'] ?? null,
+                'description' => array_key_exists('description', $data) ? $data['description'] : null,
+                'sort_order'  => $data['sort_order'] ?? null,
+                'is_active'   => $data['is_active'] ?? null,
+            ], fn ($v) => $v !== null));
+
+            if (array_key_exists('product_ids', $data)) {
+                $syncData = [];
+                foreach ($data['product_ids'] as $index => $productId) {
+                    $syncData[$productId] = ['sort_order' => $index + 1];
+                }
+                $collection->products()->sync($syncData);
+            }
+
+            $collection->load(['products' => function ($query) {
+                $query->with(['brand:id,name,slug', 'category:id,name,slug', 'images']);
+            }]);
+
+            return [
+                'success'    => true,
+                'message'    => 'Collection updated successfully.',
+                'collection' => $this->formatCollection($collection),
+            ];
+        });
+    }
+
+    public function deleteCollection(int $id): array
+    {
+        $collection = Collection::find($id);
+
+        if (!$collection) {
+            return ['success' => false, 'message' => 'Collection not found.'];
+        }
+
+        $collection->products()->detach();
+        $collection->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Collection deleted successfully.',
+        ];
+    }
+
     private function formatCollection(Collection $collection): array
     {
         return [
