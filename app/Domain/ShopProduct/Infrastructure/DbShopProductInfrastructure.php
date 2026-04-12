@@ -78,6 +78,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $query->where('is_new', $filters['is_new']);
         }
 
+        // Group by
+        if (!empty($filters['group_by']) && $filters['group_by'] === 'name') {
+            $query->groupBy('name');
+        }
+
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         switch ($sortBy) {
@@ -99,10 +104,26 @@ class DbShopProductInfrastructure implements ShopProductRepository
         $perPage = $filters['per_page'] ?? 15;
         $paginator = $query->paginate($perPage);
 
+        $isGroupByName = !empty($filters['group_by']) && $filters['group_by'] === 'name';
+        $groupedProductsByName = collect();
+        if ($isGroupByName && count($paginator->items()) > 0) {
+            $names = collect($paginator->items())->pluck('name')->unique()->toArray();
+            $groupedProductsByName = Product::query()
+                ->where('is_active', true)
+                ->whereIn('name', $names)
+                ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+                ->get()
+                ->groupBy('name');
+        }
+
         $favoritedProductIds = [];
         $purchasedProductIds = [];
+        $productIds = collect($paginator->items())->pluck('id');
+        if ($isGroupByName && $groupedProductsByName->isNotEmpty()) {
+            $productIds = $productIds->merge($groupedProductsByName->flatten()->pluck('id'))->unique();
+        }
+
         if ($userId) {
-            $productIds = collect($paginator->items())->pluck('id');
             $favoritedProductIds = Favorite::where('user_id', $userId)
                 ->whereIn('product_id', $productIds)
                 ->pluck('product_id')
@@ -118,8 +139,47 @@ class DbShopProductInfrastructure implements ShopProductRepository
                 ->toArray();
         }
 
+        $productsResult = [];
+        foreach ($paginator->items() as $item) {
+            if ($isGroupByName) {
+                $groupItems = $groupedProductsByName->get($item->name, collect());
+                $item->grouped_products = $groupItems->map(fn($v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'slug' => $v->slug,
+                    'sku' => $v->sku,
+                    'short_description' => $v->short_description,
+                    'price_jpy' => $v->price_jpy,
+                    'price_vnd' => $v->price_vnd,
+                    'original_price_jpy' => $v->original_price_jpy,
+                    'original_price_vnd' => $v->original_price_vnd,
+                    'points' => $v->points,
+                    'gender' => $v->gender,
+                    'movement_type' => $v->movement_type,
+                    'condition' => $v->condition,
+                    'stock_quantity' => $v->stock_quantity,
+                    'stock_type' => $v->stock_type,
+                    'is_featured' => $v->is_featured,
+                    'is_domestic' => $v->is_domestic,
+                    'sale_percent' => $v->sale_percent,
+                    'attributes' => $v->attributes,
+                    'display_order' => $v->display_order,
+                    'average_rating' => $v->average_rating,
+                    'review_count' => $v->review_count,
+                    'primary_image_url' => $v->primary_image_url,
+                    'is_favorited' => in_array($v->id, $favoritedProductIds),
+                    'is_purchased' => in_array($v->id, $purchasedProductIds),
+                    'brand' => $v->brand ? ['id' => $v->brand->id, 'name' => $v->brand->name, 'slug' => $v->brand->slug] : null,
+                    'category' => $v->category ? ['id' => $v->category->id, 'name' => $v->category->name, 'slug' => $v->category->slug] : null,
+                ])->toArray();
+            } else {
+                $item->grouped_products = [];
+            }
+            $productsResult[] = $item;
+        }
+
         return [
-            'products' => $paginator->items(),
+            'products' => $productsResult,
             'favorited_product_ids' => $favoritedProductIds,
             'purchased_product_ids' => $purchasedProductIds,
             'pagination' => [
@@ -346,6 +406,11 @@ class DbShopProductInfrastructure implements ShopProductRepository
             $query->where('stock_type', $filters['stock_type']);
         }
 
+        // Group by
+        if (!empty($filters['group_by']) && $filters['group_by'] === 'name') {
+            $query->groupBy('name');
+        }
+
         // Sorting
         $sortBy = $filters['sort_by'] ?? 'newest';
         match ($sortBy) {
@@ -360,7 +425,22 @@ class DbShopProductInfrastructure implements ShopProductRepository
         $perPage = $filters['per_page'] ?? 15;
         $paginator = $query->paginate($perPage);
 
+        $isGroupByName = !empty($filters['group_by']) && $filters['group_by'] === 'name';
+        $groupedProductsByName = collect();
+        if ($isGroupByName && count($paginator->items()) > 0) {
+            $names = collect($paginator->items())->pluck('name')->unique()->toArray();
+            $groupedProductsByName = Product::query()
+                ->whereIn('name', $names)
+                ->with(['brand:id,name,slug', 'category:id,name,slug', 'images'])
+                ->get()
+                ->groupBy('name');
+        }
+
         $productIds = collect($paginator->items())->pluck('id');
+        if ($isGroupByName && $groupedProductsByName->isNotEmpty()) {
+            $productIds = $productIds->merge($groupedProductsByName->flatten()->pluck('id'))->unique();
+        }
+
         $purchasedProductIds = DB::table('shop_order_items')
             ->join('shop_orders', 'shop_orders.id', '=', 'shop_order_items.order_id')
             ->whereIn('shop_orders.status', [OrderStatus::DELIVERED, OrderStatus::COMPLETED])
@@ -370,10 +450,24 @@ class DbShopProductInfrastructure implements ShopProductRepository
             ->toArray();
 
         return [
-            'products' => collect($paginator->items())->map(fn ($product) => array_merge(
-                $this->formatProduct($product),
-                ['is_purchased' => in_array($product->id, $purchasedProductIds)]
-            ))->toArray(),
+            'products' => collect($paginator->items())->map(function ($product) use ($purchasedProductIds, $isGroupByName, $groupedProductsByName) {
+                $formatted = array_merge(
+                    $this->formatProduct($product),
+                    ['is_purchased' => in_array($product->id, $purchasedProductIds)]
+                );
+
+                if ($isGroupByName) {
+                    $variants = $groupedProductsByName->get($product->name, collect());
+                    $formatted['grouped_products'] = $variants->map(fn($v) => array_merge(
+                        $this->formatProduct($v),
+                        ['is_purchased' => in_array($v->id, $purchasedProductIds)]
+                    ))->toArray();
+                } else {
+                    $formatted['grouped_products'] = [];
+                }
+
+                return $formatted;
+            })->toArray(),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

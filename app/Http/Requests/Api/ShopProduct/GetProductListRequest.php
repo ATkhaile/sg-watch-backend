@@ -25,6 +25,7 @@ class GetProductListRequest extends ApiFormRequest
             'category_id' => [$isSortByDisplayOrder ? 'required_without:brand_id' : 'nullable', 'integer', 'exists:shop_categories,id'],
             'is_domestic' => ['nullable', 'boolean'],
             'is_new' => ['nullable', 'boolean'],
+            'group_by' => ['nullable', 'string', 'in:name'],
             'sort_by' => ['nullable', 'string', 'in:newest,display_order,price_asc,price_desc'],
             'brand_id' => [$isSortByDisplayOrder ? 'required_without:category_id' : 'nullable', 'integer', 'exists:shop_brands,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],

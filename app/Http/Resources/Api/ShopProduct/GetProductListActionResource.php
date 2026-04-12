@@ -53,6 +53,7 @@ class GetProductListActionResource extends JsonResource
                             'name' => $product->category->name,
                             'slug' => $product->category->slug,
                         ] : null,
+                        'grouped_products' => $product->grouped_products ?? [],
                     ];
                 }),
                 'pagination' => $this->resource['pagination'],

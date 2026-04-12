@@ -26,6 +26,7 @@ class AdminGetProductListRequest extends ApiFormRequest
             'is_new' => ['nullable', 'boolean'],
             'in_stock' => ['nullable', 'boolean'],
             'stock_type' => ['nullable', 'string', 'in:' . implode(',', StockType::getValues())],
+            'group_by' => ['nullable', 'string', 'in:name'],
             'sort_by' => ['nullable', 'string', 'in:newest,display_order,price_asc,price_desc,name_asc,name_desc'],
             'brand_id' => [$isSortByDisplayOrder ? 'required_without:category_id' : 'nullable', 'integer', 'exists:shop_brands,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
