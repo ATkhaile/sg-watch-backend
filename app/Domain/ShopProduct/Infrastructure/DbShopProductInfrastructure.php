@@ -526,6 +526,27 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ];
     }
 
+    public function deleteByBrand(int $brandId): array
+    {
+        $count = Product::where('brand_id', $brandId)->whereNull('deleted_at')->count();
+
+        if ($count === 0) {
+            return [
+                'success'       => true,
+                'message'       => 'No active products found for this brand.',
+                'deleted_count' => 0,
+            ];
+        }
+
+        Product::where('brand_id', $brandId)->whereNull('deleted_at')->update(['deleted_at' => now()]);
+
+        return [
+            'success'       => true,
+            'message'       => "Soft deleted {$count} product(s) for brand ID {$brandId}.",
+            'deleted_count' => $count,
+        ];
+    }
+
     public function updateProductSortOrder(int $productId, int $newDisplayOrder): array
     {
         return DB::transaction(function () use ($productId, $newDisplayOrder) {
