@@ -1477,8 +1477,8 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             return 0;
         }
 
-        // 代引き手数料: 1,200 JPY fixed
-        return $currency === 'JPY' ? 1200 : 0;
+        // 代引き手数料: 1,500 JPY fixed
+        return $currency === 'JPY' ? 1500 : 0;
     }
 
     private function calculateStripeFee(string $paymentMethod, int $totalAmount, string $currency): int
