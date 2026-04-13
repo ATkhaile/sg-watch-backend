@@ -12,6 +12,7 @@ use App\Models\Shop\Order;
 use App\Models\Shop\Product;
 use App\Models\Shop\ProductColor;
 use App\Models\Shop\ProductImage;
+use App\Services\FulfillWaitingOrdersService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -551,7 +552,8 @@ class DbShopProductInfrastructure implements ShopProductRepository
             }
 
             // Record import history when admin manually increases stock
-            if (isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $product->stock_quantity) {
+            $stockIncreased = isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $product->stock_quantity;
+            if ($stockIncreased) {
                 InventoryHistory::create([
                     'product_id'     => $product->id,
                     'type'           => InventoryHistoryType::IMPORT,
@@ -564,6 +566,10 @@ class DbShopProductInfrastructure implements ShopProductRepository
             }
 
             $product->update($data);
+
+            if ($stockIncreased) {
+                FulfillWaitingOrdersService::fulfill($product->id);
+            }
 
             if ($existingImageIds !== null || $newImages !== null) {
                 // Delete images not in the keep list

@@ -60,6 +60,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         // Validate stock and calculate subtotal
         $subtotal = 0;
+        $hasOutOfStock = false;
         foreach ($cart->items as $item) {
             $product = $item->product;
             $color   = $item->productColor;
@@ -70,12 +71,12 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
             if ($color) {
                 if ($color->stock_quantity < $item->quantity) {
-                    return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\" ({$color->color_name}). Available: {$color->stock_quantity}"];
+                    $hasOutOfStock = true;
                 }
                 $price = $currency === 'JPY' ? $color->price_jpy : $color->price_vnd;
             } else {
                 if ($product->stock_quantity < $item->quantity) {
-                    return ['success' => false, 'message' => "Insufficient stock for \"{$product->name}\". Available: {$product->stock_quantity}"];
+                    $hasOutOfStock = true;
                 }
                 $price = $currency === 'JPY' ? $product->price_jpy : $product->price_vnd;
             }
@@ -133,11 +134,13 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $receiptPath = $data['payment_receipt']->store('orders/receipts/' . $userId, 'public');
         }
 
-        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $stripeFee, $depositAmount, $discountAmount, $discountCode, $pointsUsed, $totalAmount, $shippingInfo, $receiptPath) {
+        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $stripeFee, $depositAmount, $discountAmount, $discountCode, $pointsUsed, $totalAmount, $shippingInfo, $receiptPath, $hasOutOfStock) {
+            $orderStatus = $hasOutOfStock ? OrderStatus::WAITING_ORDER : OrderStatus::PENDING;
+
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $userId,
-                'status' => OrderStatus::PENDING,
+                'status' => $orderStatus,
                 'payment_status' => PaymentStatus::PENDING,
                 'payment_method' => $data['payment_method'],
                 'payment_receipt' => $receiptPath,
@@ -200,15 +203,19 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     'total_price'        => $price * $item->quantity,
                 ]);
 
-                // Decrement color stock if applicable, else product stock
+                // Decrement color stock if applicable, else product stock (only if stock is sufficient)
                 if ($color) {
-                    ProductColor::where('id', $color->id)->decrement('stock_quantity', $item->quantity);
+                    if ($color->stock_quantity >= $item->quantity) {
+                        ProductColor::where('id', $color->id)->decrement('stock_quantity', $item->quantity);
+                    }
                 } else {
-                    Product::where('id', $product->id)->decrement('stock_quantity', $item->quantity);
+                    if ($product->stock_quantity >= $item->quantity) {
+                        Product::where('id', $product->id)->decrement('stock_quantity', $item->quantity);
 
-                    $updatedProduct = Product::find($product->id);
-                    if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
-                        $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                        $updatedProduct = Product::find($product->id);
+                        if ($updatedProduct && $updatedProduct->stock_quantity <= 0) {
+                            $updatedProduct->update(['stock_type' => StockType::PRE_ORDER]);
+                        }
                     }
                 }
             }
@@ -238,7 +245,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                     'type' => 'order_created',
                     'order_id' => (string) $order->id,
                     'order_number' => $order->order_number,
-                    'status' => OrderStatus::PENDING,
+                    'status' => $orderStatus,
                 ]
             );
 

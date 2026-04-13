@@ -8,6 +8,7 @@ use App\Enums\InventoryHistoryType;
 use App\Models\Shop\InventoryHistory;
 use App\Models\Shop\ProductColor;
 use App\Models\Shop\ProductColorImage;
+use App\Services\FulfillWaitingOrdersService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -85,7 +86,8 @@ class DbShopProductColorInfrastructure implements ShopProductColorRepository
             unset($data['images'], $data['existing_image_ids']);
 
             // Record import history when admin manually increases color stock
-            if (isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $color->stock_quantity) {
+            $stockIncreased = isset($data['stock_quantity']) && (int) $data['stock_quantity'] > (int) $color->stock_quantity;
+            if ($stockIncreased) {
                 InventoryHistory::create([
                     'product_id'       => $color->product_id,
                     'product_color_id' => $color->id,
@@ -99,6 +101,10 @@ class DbShopProductColorInfrastructure implements ShopProductColorRepository
             }
 
             $color->update($data);
+
+            if ($stockIncreased) {
+                FulfillWaitingOrdersService::fulfill($color->product_id, $color->id);
+            }
 
             if ($existingImageIds !== null || $newImages !== null) {
                 if ($existingImageIds !== null) {
