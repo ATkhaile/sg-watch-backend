@@ -86,6 +86,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         $shippingFee = $this->calculateShippingFee($data['shipping_method'], $currency, $address);
         $codFee = $this->calculateCodFee($data['payment_method'], $currency);
         $depositAmount = $this->calculateDepositAmount($data['payment_method'], $currency);
+        $stripeFee = 0;
 
         // Validate discount code
         $discountAmount = 0;
@@ -120,7 +121,9 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $pointsUsed = min($requestedPoints, $maxDeductible);
         }
 
-        $totalAmount = $subtotal + $shippingFee + $codFee - $discountAmount - $pointsUsed;
+        $preFeeTotal = $subtotal + $shippingFee + $codFee - $discountAmount - $pointsUsed;
+        $stripeFee = $this->calculateStripeFee($data['payment_method'], $preFeeTotal, $currency);
+        $totalAmount = $preFeeTotal + $stripeFee;
 
         $shippingInfo = $this->buildShippingInfo($address, $userId);
 
@@ -130,7 +133,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $receiptPath = $data['payment_receipt']->store('orders/receipts/' . $userId, 'public');
         }
 
-        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountAmount, $discountCode, $pointsUsed, $totalAmount, $shippingInfo, $receiptPath) {
+        return DB::transaction(function () use ($userId, $data, $cart, $currency, $subtotal, $shippingFee, $codFee, $stripeFee, $depositAmount, $discountAmount, $discountCode, $pointsUsed, $totalAmount, $shippingInfo, $receiptPath) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => $userId,
@@ -142,6 +145,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
                 'cod_fee' => $codFee,
+                'stripe_fee' => $stripeFee,
                 'deposit_amount' => $depositAmount,
                 'discount_amount' => $discountAmount,
                 'points_used' => $pointsUsed,
@@ -1477,6 +1481,24 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
         return $currency === 'JPY' ? 1200 : 0;
     }
 
+    private function calculateStripeFee(string $paymentMethod, int $totalAmount, string $currency): int
+    {
+        if ($paymentMethod !== PaymentMethod::STRIPE || $currency !== 'JPY') {
+            return 0;
+        }
+
+        // Stripe 振込手数料 (JPY)
+        if ($totalAmount < 50000) {
+            return 1500;
+        }
+
+        if ($totalAmount <= 100000) {
+            return 3000;
+        }
+
+        return 5000;
+    }
+
     private function calculateDepositAmount(string $paymentMethod, string $currency): int
     {
         if ($paymentMethod !== PaymentMethod::DEPOSIT_TRANSFER) {
@@ -1645,6 +1667,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'subtotal' => $order->subtotal,
             'shipping_fee' => $order->shipping_fee,
             'cod_fee' => $order->cod_fee,
+            'stripe_fee' => $order->stripe_fee,
             'deposit_amount' => $order->deposit_amount,
             'discount_amount' => $order->discount_amount,
             'points_used' => $order->points_used,

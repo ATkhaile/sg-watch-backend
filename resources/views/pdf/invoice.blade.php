@@ -99,6 +99,15 @@
                 <td style="text-align: right;"></td>
                 <td style="text-align: right;">¥{{ number_format($shipping_fee_jpy, 0, ',', '.') }}</td>
             </tr>
+            {{-- Stripe Transfer Fee --}}
+            @if($stripe_fee_jpy > 0)
+            <tr>
+                <td style="text-align: left; font-weight: bold;">Phí chuyển tiền</td>
+                <td style="text-align: right;"></td>
+                <td style="text-align: right;"></td>
+                <td style="text-align: right;">¥{{ number_format($stripe_fee_jpy, 0, ',', '.') }}</td>
+            </tr>
+            @endif
         </tbody>
     </table>
 

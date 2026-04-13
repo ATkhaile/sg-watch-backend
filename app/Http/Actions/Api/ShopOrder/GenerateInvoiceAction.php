@@ -50,8 +50,9 @@ class GenerateInvoiceAction extends BaseController
         })->toArray();
 
         $shippingFeeJpy = $isJpy ? (int) $order->shipping_fee : (int) round($order->shipping_fee / $conversionRate);
+        $stripeFeeJpy = $isJpy ? (int) $order->stripe_fee : 0;
         $subtotalJpy = array_sum(array_column($items, 'total_price_jpy'));
-        $totalJpy = $subtotalJpy + $shippingFeeJpy;
+        $totalJpy = $subtotalJpy + $shippingFeeJpy + $stripeFeeJpy;
         $totalVnd = $totalJpy * $conversionRate;
 
         $maxWarrantyMonths = max(array_column($items, 'warranty_months') ?: [0]);
@@ -76,6 +77,7 @@ class GenerateInvoiceAction extends BaseController
             'items' => $items,
             'subtotal_jpy' => $subtotalJpy,
             'shipping_fee_jpy' => $shippingFeeJpy,
+            'stripe_fee_jpy' => $stripeFeeJpy,
             'total_jpy' => $totalJpy,
             'total_vnd' => $totalVnd,
             'warranty_text' => $warrantyText,
