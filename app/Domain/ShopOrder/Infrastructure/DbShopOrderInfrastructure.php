@@ -103,7 +103,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 return ['success' => false, 'message' => 'Discount code is invalid or not available.'];
             }
 
-            $discountAmount = (int) floor($subtotal * $discountCode->percentage / 100);
+            $discountAmount = min((int) $discountCode->amount, $subtotal);
         }
 
         // Validate and apply points
@@ -782,7 +782,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 return ['success' => false, 'message' => 'Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng.'];
             }
 
-            $discountAmount = (int) floor($subtotal * $discountCode->percentage / 100);
+            $discountAmount = min((int) $discountCode->amount, $subtotal);
         } else {
             $discountAmount = (int) ($data['discount_amount'] ?? 0);
         }

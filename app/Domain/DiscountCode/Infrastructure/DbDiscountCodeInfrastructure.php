@@ -105,7 +105,7 @@ class DbDiscountCodeInfrastructure implements DiscountCodeRepository
 
         return [
             'code' => $discountCode->code,
-            'percentage' => $discountCode->percentage,
+            'amount' => $discountCode->amount,
             'available' => true,
         ];
     }
@@ -116,7 +116,7 @@ class DbDiscountCodeInfrastructure implements DiscountCodeRepository
             'id' => $discountCode->id,
             'code' => $discountCode->code,
             'quantity' => $discountCode->quantity,
-            'percentage' => $discountCode->percentage,
+            'amount' => $discountCode->amount,
             'is_active' => $discountCode->is_active,
             'expires_at' => $discountCode->expires_at?->toIso8601String(),
             'created_at' => $discountCode->created_at?->toIso8601String(),

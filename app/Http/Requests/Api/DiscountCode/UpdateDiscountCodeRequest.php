@@ -17,7 +17,7 @@ class UpdateDiscountCodeRequest extends ApiFormRequest
         return [
             'code' => ['nullable', 'string', 'max:255', Rule::unique('discount_codes', 'code')->whereNull('deleted_at')->ignore($this->route('id'))],
             'quantity' => ['nullable', 'integer', 'min:0'],
-            'percentage' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'amount' => ['nullable', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date'],
         ];

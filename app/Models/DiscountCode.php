@@ -14,7 +14,7 @@ class DiscountCode extends Model
     protected $fillable = [
         'code',
         'quantity',
-        'percentage',
+        'amount',
         'is_active',
         'expires_at',
     ];
@@ -23,7 +23,7 @@ class DiscountCode extends Model
     {
         return [
             'quantity' => 'integer',
-            'percentage' => 'integer',
+            'amount' => 'integer',
             'is_active' => 'boolean',
             'expires_at' => 'datetime',
         ];

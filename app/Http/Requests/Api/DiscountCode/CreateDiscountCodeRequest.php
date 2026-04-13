@@ -17,7 +17,7 @@ class CreateDiscountCodeRequest extends ApiFormRequest
         return [
             'code' => ['required', 'string', 'max:255', Rule::unique('discount_codes', 'code')->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:0'],
-            'percentage' => ['required', 'integer', 'min:1', 'max:100'],
+            'amount' => ['required', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
             'expires_at' => ['nullable', 'date'],
         ];
