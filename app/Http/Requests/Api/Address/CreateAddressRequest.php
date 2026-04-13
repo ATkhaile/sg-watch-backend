@@ -48,12 +48,12 @@ class CreateAddressRequest extends ApiFormRequest
         // VN: always manual mode, all fields required
         if ($countryCode === 'VN') {
             $rules['input_mode'] = ['required', Rule::in(['manual'])];
-            $rules['postal_code'] = ['required', 'string', 'max:20'];
+            $rules['postal_code'] = ['nullable', 'string', 'max:20'];
             $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['vn_detail'] = ['required', 'array'];
             $rules['vn_detail.province_city'] = ['required', 'string', 'max:100'];
             $rules['vn_detail.district'] = ['required', 'string', 'max:100'];
-            $rules['vn_detail.ward_commune'] = ['required', 'string', 'max:100'];
+            $rules['vn_detail.ward_commune'] = ['nullable', 'string', 'max:100'];
             $rules['vn_detail.detail_address'] = ['required', 'string', 'max:255'];
             $rules['vn_detail.building_name'] = ['nullable', 'string', 'max:150'];
             $rules['vn_detail.room_no'] = ['nullable', 'string', 'max:50'];
