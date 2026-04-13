@@ -35,7 +35,6 @@ class CreateAddressRequest extends ApiFormRequest
         // JP + manual: address fields + image required
         if ($countryCode === 'JP' && $inputMode === 'manual') {
             $rules['postal_code'] = ['required', 'string', 'max:20'];
-            $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['image'] = ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
             $rules['jp_detail'] = ['required', 'array'];
             $rules['jp_detail.prefecture_id'] = ['required', 'string', 'exists:prefectures,prefecture_id'];
@@ -49,7 +48,6 @@ class CreateAddressRequest extends ApiFormRequest
         if ($countryCode === 'VN') {
             $rules['input_mode'] = ['required', Rule::in(['manual'])];
             $rules['postal_code'] = ['nullable', 'string', 'max:20'];
-            $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['vn_detail'] = ['required', 'array'];
             $rules['vn_detail.province_city'] = ['required', 'string', 'max:100'];
             $rules['vn_detail.district'] = ['required', 'string', 'max:100'];

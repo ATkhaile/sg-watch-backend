@@ -51,7 +51,6 @@ class UpdateAddressRequest extends ApiFormRequest
         // JP + manual: all address fields required, image optional on update
         if ($countryCode === 'JP' && $inputMode === 'manual') {
             $rules['postal_code'] = ['required', 'string', 'max:20'];
-            $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['image'] = ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
             $rules['jp_detail'] = ['required', 'array'];
             $rules['jp_detail.prefecture_id'] = ['required', 'string', 'exists:prefectures,prefecture_id'];
@@ -65,7 +64,6 @@ class UpdateAddressRequest extends ApiFormRequest
         if ($countryCode === 'VN') {
             $rules['input_mode'] = ['required', Rule::in(['manual'])];
             $rules['postal_code'] = ['nullable', 'string', 'max:20'];
-            $rules['phone'] = ['required', 'string', 'max:30'];
             $rules['vn_detail'] = ['required', 'array'];
             $rules['vn_detail.province_city'] = ['required', 'string', 'max:100'];
             $rules['vn_detail.district'] = ['required', 'string', 'max:100'];
