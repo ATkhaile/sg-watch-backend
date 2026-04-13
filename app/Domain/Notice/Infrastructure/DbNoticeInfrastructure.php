@@ -9,6 +9,7 @@ use App\Models\Notice;
 use App\Models\PusherInfo;
 use App\Models\User;
 use App\Models\UserNotice;
+use App\Models\UserSystemNoticeRead;
 use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\UploadedFile;
@@ -128,6 +129,9 @@ class DbNoticeInfrastructure implements NoticeRepository
         $page = $filters['page'] ?? 1;
 
         // Get active system notices
+        $readRecords = UserSystemNoticeRead::where('user_id', $userId)
+            ->pluck('read_at', 'notice_id');
+
         $systemNotices = Notice::where('is_active', true)
             ->select('id', 'title', 'content', 'image_url', 'created_at')
             ->get()
@@ -138,7 +142,7 @@ class DbNoticeInfrastructure implements NoticeRepository
                 'content' => $notice->content,
                 'image_url' => $notice->image_full_url,
                 'data' => null,
-                'read_at' => null,
+                'read_at' => isset($readRecords[$notice->id]) ? $readRecords[$notice->id]?->toIso8601String() : null,
                 'created_at' => $notice->created_at?->toIso8601String(),
             ]);
 
@@ -190,6 +194,10 @@ class DbNoticeInfrastructure implements NoticeRepository
             if (!$notice) {
                 return null;
             }
+            $readRecord = UserSystemNoticeRead::firstOrCreate(
+                ['user_id' => $userId, 'notice_id' => $notice->id],
+                ['read_at' => now()]
+            );
             return [
                 'id' => 'system_' . $notice->id,
                 'type' => 'system',
@@ -197,7 +205,7 @@ class DbNoticeInfrastructure implements NoticeRepository
                 'content' => $notice->content,
                 'image_url' => $notice->image_full_url,
                 'data' => null,
-                'read_at' => null,
+                'read_at' => $readRecord->read_at?->toIso8601String(),
                 'created_at' => $notice->created_at?->toIso8601String(),
             ];
         }
