@@ -22,7 +22,10 @@ class AdminGetFeaturedProductsAction extends BaseController
 
     public function __invoke(): AdminGetFeaturedProductsActionResource
     {
-        $products = $this->useCase->__invoke();
+        $user = auth('api')->user() ?? auth()->user();
+        $userId = $user ? (int) $user->id : null;
+
+        $products = $this->useCase->__invoke($userId);
 
         return $this->responder->__invoke($products);
     }

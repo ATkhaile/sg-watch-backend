@@ -15,6 +15,6 @@ interface ShopProductRepository
     public function deleteByBrand(int $brandId): array;
     public function restoreByBrand(int $brandId): array;
     public function updateFeaturedProducts(array $productIds): array;
-    public function getFeaturedProducts(): array;
+    public function getFeaturedProducts(?int $userId = null): array;
     public function updateProductSortOrder(int $productId, int $newDisplayOrder): array;
 }

@@ -714,7 +714,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
         });
     }
 
-    public function getFeaturedProducts(): array
+    public function getFeaturedProducts(?int $userId = null): array
     {
         $products = Product::where('is_featured', true)
             ->where('is_active', true)
@@ -722,6 +722,15 @@ class DbShopProductInfrastructure implements ShopProductRepository
             ->orderBy('sort_order')
             ->limit(8)
             ->get();
+
+        $favoritedProductIds = [];
+        if ($userId) {
+            $productIds = $products->pluck('id')->toArray();
+            $favoritedProductIds = Favorite::where('user_id', $userId)
+                ->whereIn('product_id', $productIds)
+                ->pluck('product_id')
+                ->toArray();
+        }
 
         return $products->map(fn ($product) => [
             'id' => $product->id,
@@ -749,6 +758,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
             'primary_image_url' => $product->primary_image_url,
+            'is_favorited' => in_array($product->id, $favoritedProductIds),
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,

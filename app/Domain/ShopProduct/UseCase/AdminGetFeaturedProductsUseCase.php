@@ -13,8 +13,8 @@ final class AdminGetFeaturedProductsUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(): array
+    public function __invoke(?int $userId = null): array
     {
-        return $this->repository->getFeaturedProducts();
+        return $this->repository->getFeaturedProducts($userId);
     }
 }
