@@ -16,5 +16,5 @@ interface BigSaleRepository
 
     public function getPublicList(array $filters): array;
 
-    public function getPublicDetail(int $id): ?array;
+    public function getPublicDetail(int $id, ?int $userId = null): ?array;
 }

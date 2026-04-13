@@ -5,6 +5,7 @@ namespace App\Domain\ShopCollection\Infrastructure;
 use App\Components\CommonComponent;
 use App\Domain\ShopCollection\Repository\ShopCollectionRepository;
 use App\Models\Shop\Collection;
+use App\Models\Shop\Favorite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -51,7 +52,7 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
         return $collections->map(fn ($collection) => $this->formatCollection($collection))->toArray();
     }
 
-    public function getActiveCollections(): array
+    public function getActiveCollections(?int $userId = null): array
     {
         $collections = Collection::where('is_active', true)
             ->with(['products' => function ($query) {
@@ -61,7 +62,18 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
             ->orderBy('sort_order')
             ->get();
 
-        return $collections->map(fn ($collection) => $this->formatCollection($collection))->toArray();
+        $favoritedIds = [];
+        if ($userId) {
+            $allProductIds = $collections->flatMap(fn($c) => $c->products->pluck('id'))->unique()->toArray();
+            if (!empty($allProductIds)) {
+                $favoritedIds = Favorite::where('user_id', $userId)
+                    ->whereIn('product_id', $allProductIds)
+                    ->pluck('product_id')
+                    ->toArray();
+            }
+        }
+
+        return $collections->map(fn ($collection) => $this->formatCollection($collection, $favoritedIds))->toArray();
     }
 
     public function getById(int $id): ?array
@@ -131,7 +143,7 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
         ];
     }
 
-    private function formatCollection(Collection $collection): array
+    private function formatCollection(Collection $collection, array $favoritedIds = []): array
     {
         return [
             'id' => $collection->id,
@@ -140,13 +152,13 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
             'description' => $collection->description,
             'sort_order' => $collection->sort_order,
             'is_active' => $collection->is_active,
-            'products' => $collection->products->map(fn ($product) => $this->formatProduct($product))->toArray(),
+            'products' => $collection->products->map(fn ($product) => $this->formatProduct($product, $favoritedIds))->toArray(),
             'created_at' => $collection->created_at?->toIso8601String(),
             'updated_at' => $collection->updated_at?->toIso8601String(),
         ];
     }
 
-    private function formatProduct($product): array
+    private function formatProduct($product, array $favoritedIds = []): array
     {
         return [
             'id' => $product->id,
@@ -172,6 +184,7 @@ class DbShopCollectionInfrastructure implements ShopCollectionRepository
             'average_rating' => $product->average_rating,
             'review_count' => $product->review_count,
             'sold_count' => $product->sold_count,
+            'is_favorited' => in_array($product->id, $favoritedIds),
             'primary_image_url' => $product->primary_image ? CommonComponent::getFullUrl($product->primary_image) : null,
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,

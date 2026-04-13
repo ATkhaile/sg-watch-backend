@@ -13,8 +13,8 @@ final class GetPublicBigSaleDetailUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(int $id): ?array
+    public function __invoke(int $id, ?int $userId = null): ?array
     {
-        return $this->repository->getPublicDetail($id);
+        return $this->repository->getPublicDetail($id, $userId);
     }
 }

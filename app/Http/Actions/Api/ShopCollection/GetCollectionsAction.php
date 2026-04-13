@@ -22,7 +22,8 @@ class GetCollectionsAction extends BaseController
 
     public function __invoke(): GetCollectionsActionResource
     {
-        $collections = $this->useCase->__invoke();
+        $userId = auth()->id() ? (int) auth()->id() : null;
+        $collections = $this->useCase->__invoke($userId);
 
         return $this->responder->__invoke($collections);
     }

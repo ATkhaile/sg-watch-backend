@@ -13,8 +13,8 @@ final class GetCollectionsUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(): array
+    public function __invoke(?int $userId = null): array
     {
-        return $this->repository->getActiveCollections();
+        return $this->repository->getActiveCollections($userId);
     }
 }

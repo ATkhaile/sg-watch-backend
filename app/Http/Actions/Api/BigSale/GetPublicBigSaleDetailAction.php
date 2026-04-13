@@ -23,7 +23,8 @@ class GetPublicBigSaleDetailAction extends BaseController
 
     public function __invoke(int $id): GetPublicBigSaleDetailActionResource|JsonResponse
     {
-        $bigSale = $this->useCase->__invoke($id);
+        $userId = auth()->id() ? (int) auth()->id() : null;
+        $bigSale = $this->useCase->__invoke($id, $userId);
         if (!$bigSale) {
             return response()->json([
                 'message' => 'Big sale not found.',

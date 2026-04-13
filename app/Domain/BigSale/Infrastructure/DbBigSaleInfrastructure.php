@@ -5,6 +5,7 @@ namespace App\Domain\BigSale\Infrastructure;
 use App\Components\CommonComponent;
 use App\Domain\BigSale\Repository\BigSaleRepository;
 use App\Models\BigSale;
+use App\Models\Shop\Favorite;
 use App\Models\Shop\Product;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -143,7 +144,7 @@ class DbBigSaleInfrastructure implements BigSaleRepository
         ];
     }
 
-    public function getPublicDetail(int $id): ?array
+    public function getPublicDetail(int $id, ?int $userId = null): ?array
     {
         $now = now()->toDateString();
 
@@ -156,7 +157,7 @@ class DbBigSaleInfrastructure implements BigSaleRepository
             return null;
         }
 
-        return $this->formatBigSaleDetail($bigSale);
+        return $this->formatBigSaleDetail($bigSale, $userId);
     }
 
     private function formatBigSale(BigSale $bigSale): array
@@ -177,7 +178,7 @@ class DbBigSaleInfrastructure implements BigSaleRepository
         ];
     }
 
-    private function formatBigSaleDetail(BigSale $bigSale): array
+    private function formatBigSaleDetail(BigSale $bigSale, ?int $userId = null): array
     {
         $data = $this->formatBigSale($bigSale);
 
@@ -185,7 +186,15 @@ class DbBigSaleInfrastructure implements BigSaleRepository
             ->with(['category', 'brand'])
             ->get();
 
-        $data['products'] = $products->map(function ($product) {
+        $favoritedIds = [];
+        if ($userId && $products->isNotEmpty()) {
+            $favoritedIds = Favorite::where('user_id', $userId)
+                ->whereIn('product_id', $products->pluck('id')->toArray())
+                ->pluck('product_id')
+                ->toArray();
+        }
+
+        $data['products'] = $products->map(function ($product) use ($favoritedIds) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -196,6 +205,7 @@ class DbBigSaleInfrastructure implements BigSaleRepository
                 'original_price_vnd' => $product->original_price_vnd,
                 'sale_percent' => $product->sale_percent,
                 'primary_image_url' => $product->primary_image_url,
+                'is_favorited' => in_array($product->id, $favoritedIds),
                 'category' => $product->category ? [
                     'id' => $product->category->id,
                     'name' => $product->category->name,
