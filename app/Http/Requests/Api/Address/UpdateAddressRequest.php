@@ -39,19 +39,19 @@ class UpdateAddressRequest extends ApiFormRequest
             'label' => ['sometimes', 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'],
+            'image' => ['nullable', 'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/tiff,image/svg+xml', 'max:51200'],
             'is_default' => ['sometimes', 'boolean'],
         ];
 
         // JP + image_only: image optional on update (keep old if not sent)
         if ($countryCode === 'JP' && $inputMode === 'image_only') {
-            $rules['image'] = ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
+            $rules['image'] = ['nullable', 'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/tiff,image/svg+xml', 'max:51200'];
         }
 
         // JP + manual: all address fields required, image optional on update
         if ($countryCode === 'JP' && $inputMode === 'manual') {
             $rules['postal_code'] = ['required', 'string', 'max:20'];
-            $rules['image'] = ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:51200'];
+            $rules['image'] = ['nullable', 'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/tiff,image/svg+xml', 'max:51200'];
             $rules['jp_detail'] = ['required', 'array'];
             $rules['jp_detail.prefecture_id'] = ['required', 'string', 'exists:prefectures,prefecture_id'];
             $rules['jp_detail.ward_town'] = ['required', 'string', 'max:100'];
