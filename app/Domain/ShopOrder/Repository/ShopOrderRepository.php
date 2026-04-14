@@ -16,4 +16,5 @@ interface ShopOrderRepository
     public function adminCreateOrder(array $data): array;
     public function adminUpdateOrder(int $orderId, array $data): array;
     public function handleStripeWebhook(string $payload, string $signature): array;
+    public function retryStripePayment(int $userId, int $orderId): array;
 }

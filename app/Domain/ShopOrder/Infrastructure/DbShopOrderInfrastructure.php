@@ -1754,4 +1754,83 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
 
         return $data;
     }
+
+    public function retryStripePayment(int $userId, int $orderId): array
+    {
+        $order = Order::where('id', $orderId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        if ($order->payment_method !== PaymentMethod::STRIPE) {
+            return ['success' => false, 'message' => 'This order does not use Stripe payment.'];
+        }
+
+        if ($order->payment_status === PaymentStatus::PAID) {
+            return ['success' => false, 'message' => 'This order has already been paid.'];
+        }
+
+        $stripe = new StripeClient(config('services.stripe.secret_key'));
+
+        // If a PaymentIntent already exists, try to reuse it
+        if ($order->stripe_payment_intent_id) {
+            try {
+                $paymentIntent = $stripe->paymentIntents->retrieve($order->stripe_payment_intent_id);
+
+                // PaymentIntent already succeeded but webhook hasn't processed yet
+                if ($paymentIntent->status === 'succeeded') {
+                    $order->update([
+                        'payment_status' => PaymentStatus::PAID,
+                        'paid_at' => now(),
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Payment already completed.',
+                        'order' => $this->formatOrder($order->fresh()),
+                        'already_paid' => true,
+                    ];
+                }
+
+                // PaymentIntent is still usable — return existing client_secret
+                if (in_array($paymentIntent->status, ['requires_payment_method', 'requires_confirmation', 'requires_action'])) {
+                    return [
+                        'success' => true,
+                        'message' => 'Please complete your payment.',
+                        'order' => $this->formatOrder($order),
+                        'stripe_client_secret' => $paymentIntent->client_secret,
+                        'stripe_public_key' => config('services.stripe.public_key'),
+                    ];
+                }
+
+                // PaymentIntent is canceled or in an unusable state — create a new one
+            } catch (\Throwable $e) {
+                Log::warning('Failed to retrieve Stripe PaymentIntent, creating new one', [
+                    'order_id' => $order->id,
+                    'payment_intent_id' => $order->stripe_payment_intent_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Create a new PaymentIntent
+        $result = $this->createStripePaymentIntent($order, (int) $order->total_amount, $order->currency);
+
+        if (!$result['success']) {
+            return ['success' => false, 'message' => $result['message']];
+        }
+
+        $order->update(['stripe_payment_intent_id' => $result['payment_intent_id']]);
+
+        return [
+            'success' => true,
+            'message' => 'Please complete your payment.',
+            'order' => $this->formatOrder($order->fresh()),
+            'stripe_client_secret' => $result['client_secret'],
+            'stripe_public_key' => config('services.stripe.public_key'),
+        ];
+    }
 }

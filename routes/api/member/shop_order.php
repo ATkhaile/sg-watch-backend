@@ -18,4 +18,5 @@ Route::prefix('shop/orders')->group(function () {
     Route::get('{id}/invoice', \App\Http\Actions\Api\ShopOrder\GenerateInvoiceAction::class);
     Route::post('{id}/cancel', \App\Http\Actions\Api\ShopOrder\CancelOrderAction::class);
     Route::post('{id}/payment-receipt', \App\Http\Actions\Api\ShopOrder\UpdatePaymentReceiptAction::class);
+    Route::post('{id}/retry-payment', \App\Http\Actions\Api\ShopOrder\RetryStripePaymentAction::class);
 });
