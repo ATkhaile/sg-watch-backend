@@ -96,12 +96,6 @@ class DbShopCartInfrastructure implements ShopCartRepository
             }
         }
 
-        // Check stock against color or product
-        $availableStock = $color ? $color->stock_quantity : $product->stock_quantity;
-        if ($availableStock < $quantity) {
-            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock];
-        }
-
         $cart  = $this->findOrCreateCart($userId, $deviceId);
         $price = $currency === 'JPY'
             ? ($color ? $color->price_jpy : $product->price_jpy)
@@ -115,10 +109,6 @@ class DbShopCartInfrastructure implements ShopCartRepository
 
         if ($cartItem) {
             $newQuantity = $cartItem->quantity + $quantity;
-
-            if ($availableStock < $newQuantity) {
-                return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock . ', in cart: ' . $cartItem->quantity];
-            }
 
             $cartItem->update([
                 'quantity'          => $newQuantity,
@@ -171,18 +161,6 @@ class DbShopCartInfrastructure implements ShopCartRepository
 
         if (!$product) {
             return ['success' => false, 'message' => 'Product not found or inactive.'];
-        }
-
-        // Check stock against color variant or product
-        if ($cartItem->product_color_id) {
-            $color = ProductColor::find($cartItem->product_color_id);
-            $availableStock = $color ? $color->stock_quantity : 0;
-        } else {
-            $availableStock = $product->stock_quantity;
-        }
-
-        if ($availableStock < $quantity) {
-            return ['success' => false, 'message' => 'Insufficient stock. Available: ' . $availableStock];
         }
 
         $cartItem->update(['quantity' => $quantity]);
