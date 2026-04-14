@@ -204,6 +204,8 @@ class DbBigSaleInfrastructure implements BigSaleRepository
                 'original_price_jpy' => $product->original_price_jpy,
                 'original_price_vnd' => $product->original_price_vnd,
                 'sale_percent' => $product->sale_percent,
+                'average_rating' => $product->average_rating,
+                'review_count' => $product->review_count,
                 'primary_image_url' => $product->primary_image_url,
                 'is_favorited' => in_array($product->id, $favoritedIds),
                 'category' => $product->category ? [
