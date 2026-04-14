@@ -13,8 +13,8 @@ final class GetReviewDetailUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(int $userId, int $reviewId): ?array
+    public function __invoke(int $reviewId, ?int $authUserId = null): ?array
     {
-        return $this->repository->getById($userId, $reviewId);
+        return $this->repository->getById($reviewId, $authUserId);
     }
 }

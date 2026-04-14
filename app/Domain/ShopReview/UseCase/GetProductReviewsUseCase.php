@@ -13,8 +13,8 @@ final class GetProductReviewsUseCase
         $this->repository = $repository;
     }
 
-    public function __invoke(int $productId, int $perPage = 15): array
+    public function __invoke(int $productId, int $perPage = 15, ?int $authUserId = null): array
     {
-        return $this->repository->getByProduct($productId, $perPage);
+        return $this->repository->getByProduct($productId, $perPage, $authUserId);
     }
 }

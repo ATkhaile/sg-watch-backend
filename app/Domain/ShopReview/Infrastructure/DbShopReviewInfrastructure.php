@@ -70,7 +70,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         return [
             'success' => true,
             'message' => 'Review submitted successfully.',
-            'review' => $this->formatReview($review),
+            'review' => $this->formatReview($review, $userId),
         ];
     }
 
@@ -119,7 +119,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         return [
             'success' => true,
             'message' => 'Review updated successfully.',
-            'review' => $this->formatReview($review),
+            'review' => $this->formatReview($review, $userId),
         ];
     }
 
@@ -144,10 +144,9 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         ];
     }
 
-    public function getById(int $userId, int $reviewId): ?array
+    public function getById(int $reviewId, ?int $authUserId = null): ?array
     {
         $review = Review::where('id', $reviewId)
-            ->where('user_id', $userId)
             ->with(['user:id,first_name,last_name', 'product:id,name,slug'])
             ->first();
 
@@ -155,7 +154,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
             return null;
         }
 
-        $data = $this->formatReview($review);
+        $data = $this->formatReview($review, $authUserId);
         $data['product'] = $review->product ? [
             'id' => $review->product->id,
             'name' => $review->product->name,
@@ -165,7 +164,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         return $data;
     }
 
-    public function getByProduct(int $productId, int $perPage): array
+    public function getByProduct(int $productId, int $perPage, ?int $authUserId = null): array
     {
         $paginator = Review::where('product_id', $productId)
             ->where('is_approved', true)
@@ -174,7 +173,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
             ->paginate($perPage);
 
         return [
-            'reviews' => collect($paginator->items())->map(fn (Review $r) => $this->formatReview($r))->toArray(),
+            'reviews' => collect($paginator->items())->map(fn (Review $r) => $this->formatReview($r, $authUserId))->toArray(),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -192,8 +191,8 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
             ->paginate($perPage);
 
         return [
-            'reviews' => collect($paginator->items())->map(function (Review $r) {
-                $data = $this->formatReview($r);
+            'reviews' => collect($paginator->items())->map(function (Review $r) use ($userId) {
+                $data = $this->formatReview($r, $userId);
                 $data['product'] = $r->product ? [
                     'id' => $r->product->id,
                     'name' => $r->product->name,
@@ -228,7 +227,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
         }
     }
 
-    private function formatReview(Review $review): array
+    private function formatReview(Review $review, ?int $authUserId = null): array
     {
         return [
             'id' => $review->id,
@@ -239,6 +238,7 @@ class DbShopReviewInfrastructure implements ShopReviewRepository
             'image_base_url' => rtrim(Storage::disk('public')->url(''), '/') . '/',
             'image_urls' => $review->image_urls,
             'is_approved' => $review->is_approved,
+            'is_owner' => $authUserId !== null && $authUserId === $review->user_id,
             'user' => $review->user ? [
                 'first_name' => $review->user->first_name,
                 'last_name' => $review->user->last_name,

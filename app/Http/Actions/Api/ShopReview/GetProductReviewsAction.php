@@ -24,7 +24,8 @@ class GetProductReviewsAction extends BaseController
     public function __invoke(Request $request, int $productId): GetProductReviewsActionResource
     {
         $perPage = (int) $request->query('per_page', 15);
-        $result = $this->useCase->__invoke($productId, $perPage);
+        $authUserId = auth()->id() ? (int) auth()->id() : null;
+        $result = $this->useCase->__invoke($productId, $perPage, $authUserId);
 
         return $this->responder->__invoke($result);
     }

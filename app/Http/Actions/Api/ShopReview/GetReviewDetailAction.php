@@ -22,8 +22,8 @@ class GetReviewDetailAction extends BaseController
 
     public function __invoke(int $id): GetReviewDetailActionResource
     {
-        $userId = (int) auth()->user()->id;
-        $result = $this->useCase->__invoke($userId, $id);
+        $authUserId = auth()->id() ? (int) auth()->id() : null;
+        $result = $this->useCase->__invoke($id, $authUserId);
 
         return $this->responder->__invoke($result);
     }
