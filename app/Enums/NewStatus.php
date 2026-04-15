@@ -10,4 +10,5 @@ final class NewStatus extends Enum
 {
     public const PUBLISH = 1;
     public const DRAFT = 2;
+    public const LIKE_NEW = 3;
 }
