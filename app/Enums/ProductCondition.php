@@ -9,6 +9,7 @@ use BenSampo\Enum\Enum;
 final class ProductCondition extends Enum
 {
     public const NEW = 'new';
+    public const LIKE_NEW = 'like_new';
     public const DISPLAY = 'display';
     public const USED = 'used';
 }
