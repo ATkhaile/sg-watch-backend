@@ -13,4 +13,5 @@ final class MovementType extends Enum
     public const MANUAL = 'manual';       // Cơ lên dây
     public const SOLAR = 'solar';         // Năng lượng mặt trời
     public const KINETIC = 'kinetic';     // Kinetic
+    public const ECO_DRIVE = 'eco-drive'; // Eco-Drive
 }
