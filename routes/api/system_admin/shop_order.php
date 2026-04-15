@@ -19,4 +19,5 @@ Route::prefix('shop/orders')->group(function () {
     Route::get('{id}/invoice', \App\Http\Actions\Api\ShopOrder\AdminGenerateInvoiceAction::class);
     Route::put('{id}/status', \App\Http\Actions\Api\ShopOrder\AdminUpdateOrderStatusAction::class);
     Route::put('{id}/payment-status', \App\Http\Actions\Api\ShopOrder\AdminUpdatePaymentStatusAction::class);
+    Route::delete('{id}', \App\Http\Actions\Api\ShopOrder\AdminDeleteOrderAction::class);
 });

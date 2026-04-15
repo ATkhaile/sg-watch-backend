@@ -1833,4 +1833,17 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'stripe_public_key' => config('services.stripe.public_key'),
         ];
     }
+
+    public function adminDeleteOrder(int $orderId): array
+    {
+        $order = Order::find($orderId);
+
+        if (!$order) {
+            return ['success' => false, 'message' => 'Order not found.'];
+        }
+
+        $order->delete();
+
+        return ['success' => true, 'message' => 'Order deleted successfully.'];
+    }
 }
