@@ -57,6 +57,7 @@ return [
     'allowed_mime_types' => [
         // Images
         'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'image/heic', 'image/heif',
         
         // Documents
         'application/pdf',
