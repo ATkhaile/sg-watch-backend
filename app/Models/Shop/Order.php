@@ -97,7 +97,8 @@ class Order extends Model
     {
         $prefix = 'SG' . now()->format('ym');
 
-        $lastOrder = static::where('order_number', 'like', $prefix . '%')
+        $lastOrder = static::withTrashed()
+            ->where('order_number', 'like', $prefix . '%')
             ->orderByDesc('order_number')
             ->lockForUpdate()
             ->first();
