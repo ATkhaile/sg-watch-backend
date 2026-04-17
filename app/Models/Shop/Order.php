@@ -99,6 +99,7 @@ class Order extends Model
 
         $lastOrder = static::where('order_number', 'like', $prefix . '%')
             ->orderByDesc('order_number')
+            ->lockForUpdate()
             ->first();
 
         $sequence = $lastOrder
