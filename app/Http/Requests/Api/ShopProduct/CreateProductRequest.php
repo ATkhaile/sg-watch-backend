@@ -47,7 +47,7 @@ class CreateProductRequest extends ApiFormRequest
             'is_new' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer'],
             'images' => ['nullable', 'array'],
-            'images.*' => ['sometimes', 'file', 'image', 'max:5120'],
+            'images.*' => ['sometimes', 'file', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,mp4,mov,avi,webm', 'max:102400'],
             'images.*.image_url' => ['sometimes', 'string', 'max:500'],
             'images.*.alt_text' => ['nullable', 'string', 'max:255'],
             'images.*.sort_order' => ['nullable', 'integer'],

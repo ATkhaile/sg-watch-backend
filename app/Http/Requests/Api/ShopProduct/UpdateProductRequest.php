@@ -51,7 +51,7 @@ class UpdateProductRequest extends ApiFormRequest
             'existing_image_ids' => ['nullable', 'array'],
             'existing_image_ids.*' => ['integer'],
             'images' => ['nullable', 'array'],
-            'images.*' => ['file', 'image', 'max:5120'],
+            'images.*' => ['file', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,mp4,mov,avi,webm', 'max:102400'],
         ];
     }
 }
