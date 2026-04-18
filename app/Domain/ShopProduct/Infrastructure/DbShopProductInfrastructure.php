@@ -327,6 +327,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             'images' => $product->images->map(fn ($img) => [
                 'id' => $img->id,
                 'image_url' => $img->image_url ? CommonComponent::getFullUrl($img->image_url) : null,
+                'file_type' => $img->file_type ?? 'image',
                 'sort_order' => $img->sort_order,
             ])->toArray(),
             'colors' => $product->colors->map(fn ($color) => $this->formatColor($color))->toArray(),
@@ -591,6 +592,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
                             ProductImage::create([
                                 'product_id' => $product->id,
                                 'image_url' => $image->store('products/' . $product->id, 'public'),
+                                'file_type' => $this->detectFileType($image),
                                 'alt_text' => null,
                                 'is_primary' => false,
                                 'sort_order' => $startSort + $index,
@@ -778,19 +780,29 @@ class DbShopProductInfrastructure implements ShopProductRepository
         ])->toArray();
     }
 
+    private function detectFileType(UploadedFile $file): string
+    {
+        $videoMimes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/avi', 'video/webm', 'video/x-msvideo'];
+        return in_array($file->getMimeType(), $videoMimes) ? 'video' : 'image';
+    }
+
     private function syncImages(Product $product, array $images): void
     {
         foreach ($images as $index => $image) {
             // Handle file upload or URL string
             if ($image instanceof UploadedFile) {
                 $imageUrl = $image->store('products/' . $product->id, 'public');
+                $fileType = $this->detectFileType($image);
                 $altText = null;
                 $sortOrder = $index;
             } elseif (is_array($image)) {
                 if (isset($image['image_url']) && $image['image_url'] instanceof UploadedFile) {
-                    $imageUrl = $image['image_url']->store('products/' . $product->id, 'public');
+                    $file = $image['image_url'];
+                    $imageUrl = $file->store('products/' . $product->id, 'public');
+                    $fileType = $this->detectFileType($file);
                 } else {
                     $imageUrl = $image['image_url'] ?? '';
+                    $fileType = 'image';
                 }
                 $altText = $image['alt_text'] ?? null;
                 $sortOrder = $image['sort_order'] ?? $index;
@@ -801,6 +813,7 @@ class DbShopProductInfrastructure implements ShopProductRepository
             ProductImage::create([
                 'product_id' => $product->id,
                 'image_url' => $imageUrl,
+                'file_type' => $fileType,
                 'alt_text' => $altText,
                 'is_primary' => false,
                 'sort_order' => $sortOrder,
