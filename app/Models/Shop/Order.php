@@ -43,6 +43,7 @@ class Order extends Model
         'shipping_city',
         'shipping_country',
         'shipping_postal_code',
+        'shipping_address_image',
         'note',
         'admin_note',
         'tracking_number',

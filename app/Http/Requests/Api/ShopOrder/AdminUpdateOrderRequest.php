@@ -31,6 +31,7 @@ class AdminUpdateOrderRequest extends ApiFormRequest
             'shipping_city' => ['nullable', 'string', 'max:255'],
             'shipping_country' => ['nullable', 'string', 'max:10'],
             'shipping_postal_code' => ['nullable', 'string', 'max:20'],
+            'shipping_address_image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:5120'],
             'shipping_fee' => ['nullable', 'numeric', 'min:0'],
             'cod_fee' => ['nullable', 'numeric', 'min:0'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],

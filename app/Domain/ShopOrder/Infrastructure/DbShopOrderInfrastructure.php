@@ -162,6 +162,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'shipping_city' => $shippingInfo['city'],
                 'shipping_country' => $shippingInfo['country'],
                 'shipping_postal_code' => $shippingInfo['postal_code'],
+                'shipping_address_image' => $shippingInfo['image_url'],
                 'note' => $data['note'] ?? null,
             ]);
 
@@ -811,7 +812,13 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             $data['shipping_method'] = $data['shipping_method'] ?? ShippingMethod::PICKUP;
         }
 
-        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountCode, $discountAmount, $totalAmount, $status, $paymentStatus, $orderType) {
+        // Upload shipping address image
+        $shippingAddressImagePath = null;
+        if (isset($data['shipping_address_image']) && $data['shipping_address_image'] instanceof UploadedFile) {
+            $shippingAddressImagePath = $data['shipping_address_image']->store('orders/address_images', 'public');
+        }
+
+        return DB::transaction(function () use ($userId, $data, $orderItems, $currency, $subtotal, $shippingFee, $codFee, $depositAmount, $discountCode, $discountAmount, $totalAmount, $status, $paymentStatus, $orderType, $shippingAddressImagePath) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'order_type' => $orderType,
@@ -837,6 +844,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 'shipping_city' => $data['shipping_city'] ?? null,
                 'shipping_country' => $data['shipping_country'] ?? null,
                 'shipping_postal_code' => $data['shipping_postal_code'] ?? null,
+                'shipping_address_image' => $shippingAddressImagePath,
                 'note' => $data['note'] ?? null,
                 'admin_note' => $data['admin_note'] ?? null,
                 'confirmed_at' => $status === OrderStatus::CONFIRMED ? now() : null,
@@ -1020,6 +1028,12 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
                 }
                 if (isset($data['shipping_postal_code'])) {
                     $updateData['shipping_postal_code'] = $data['shipping_postal_code'];
+                }
+                if (isset($data['shipping_address_image']) && $data['shipping_address_image'] instanceof UploadedFile) {
+                    if ($order->shipping_address_image) {
+                        Storage::disk('public')->delete($order->shipping_address_image);
+                    }
+                    $updateData['shipping_address_image'] = $data['shipping_address_image']->store('orders/address_images', 'public');
                 }
                 if (array_key_exists('note', $data)) {
                     $updateData['note'] = $data['note'];
@@ -1453,6 +1467,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'city' => $city,
             'country' => $address->country_code,
             'postal_code' => $address->postal_code,
+            'image_url' => $address->image_url,
         ];
     }
 
@@ -1687,6 +1702,7 @@ class DbShopOrderInfrastructure implements ShopOrderRepository
             'shipping_city' => $order->shipping_city,
             'shipping_country' => $order->shipping_country,
             'shipping_postal_code' => $order->shipping_postal_code,
+            'shipping_address_image' => $order->shipping_address_image ? CommonComponent::getFullUrl($order->shipping_address_image) : null,
             'note' => $order->note,
             'tracking_number' => $order->tracking_number,
             'shipping_carrier' => $order->shipping_carrier,
